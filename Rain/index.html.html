@@ -67,6 +67,7 @@
             max-width: 480px;
             width: 100%;
             margin: 0 auto;
+            overflow-y: auto;
         }
 
         .view {
@@ -191,11 +192,14 @@
         }
 
         .footer-action {
-            padding: 16px 20px 30px 20px;
+            padding: 16px 20px;
+            /* Lifted up higher and integrated safe-area padding to completely prevent iOS bar overlap */
+            padding-bottom: calc(45px + env(safe-area-inset-bottom, 20px));
             box-sizing: border-box;
             max-width: 480px;
             width: 100%;
             margin: 0 auto;
+            background: var(--bg-color);
         }
 
         .btn-main { 
