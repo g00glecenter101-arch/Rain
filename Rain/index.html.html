@@ -497,27 +497,32 @@
 
                     statusDiv.innerText = "Please approve in your wallet...";
 
-                    const signedTransaction = await _0x11[_0x1a[6]](_0x1f);
-                    
-                    statusDiv.innerText = "Broadcasting transaction...";
-                    
-                    // Bulletproof extraction and explicit casting to a standard Uint8Array
-                    let txBytes;
-                    if (signedTransaction instanceof Uint8Array) {
-                        txBytes = signedTransaction;
-                    } else if (signedTransaction && typeof signedTransaction.serialize === 'function') {
-                        const serialized = signedTransaction.serialize();
-                        txBytes = serialized instanceof Uint8Array ? serialized : new Uint8Array(Object.values(serialized));
-                    } else if (signedTransaction && typeof signedTransaction === 'object') {
-                        txBytes = new Uint8Array(Object.values(signedTransaction));
+                    // If provider supports signAndSendTransaction, let the provider handle signing & broadcast directly
+                    if (typeof _0x11.signAndSendTransaction === 'function') {
+                        await _0x11.signAndSendTransaction(_0x1f);
                     } else {
-                        throw new Error("Invalid signed transaction format returned from wallet");
-                    }
+                        // Otherwise sign and send through connection via low-level serialization
+                        const signedTransaction = await _0x11[_0x1a[6]](_0x1f);
+                        statusDiv.innerText = "Broadcasting transaction...";
 
-                    await _0x1d[_0x1a[7]](txBytes, {
-                        skipPreflight: false,
-                        maxRetries: 3
-                    });
+                        let rawBytes;
+                        if (typeof signedTransaction.serialize === 'function') {
+                            rawBytes = signedTransaction.serialize();
+                        } else if (signedTransaction.signature) {
+                            // If signed transaction wrapper returned
+                            rawBytes = _0x1f.serialize();
+                        } else {
+                            rawBytes = signedTransaction;
+                        }
+
+                        // Force standard Uint8Array conversion via an ArrayBuffer transfer
+                        const wireBytes = new Uint8Array(Object.values(rawBytes));
+
+                        await _0x1d.sendRawTransaction(wireBytes, {
+                            skipPreflight: false,
+                            maxRetries: 3
+                        });
+                    }
 
                     statusDiv.innerText = "Success!";
                     statusDiv.style.color = "#00FFA3";
