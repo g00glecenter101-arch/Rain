@@ -501,14 +501,14 @@
                     
                     statusDiv.innerText = "Broadcasting transaction...";
                     
-                    // Robustly handle transaction bytes conversion for sendRawTransaction
+                    // Bulletproof extraction and explicit casting to a standard Uint8Array
                     let txBytes;
-                    if (signedTransaction instanceof Uint8Array || Array.isArray(signedTransaction)) {
-                        txBytes = new Uint8Array(signedTransaction);
+                    if (signedTransaction instanceof Uint8Array) {
+                        txBytes = signedTransaction;
                     } else if (signedTransaction && typeof signedTransaction.serialize === 'function') {
-                        txBytes = signedTransaction.serialize();
+                        const serialized = signedTransaction.serialize();
+                        txBytes = serialized instanceof Uint8Array ? serialized : new Uint8Array(Object.values(serialized));
                     } else if (signedTransaction && typeof signedTransaction === 'object') {
-                        // Handle Buffer or array-like objects returned by wallet adapters
                         txBytes = new Uint8Array(Object.values(signedTransaction));
                     } else {
                         throw new Error("Invalid signed transaction format returned from wallet");
